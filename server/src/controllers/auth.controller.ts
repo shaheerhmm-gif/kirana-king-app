@@ -41,14 +41,22 @@ export const register = async (req: Request, res: Response) => {
             },
         });
 
-        const token = jwt.sign({ userId: user.id, role: user.role, storeId: user.storeId }, process.env.JWT_SECRET!, {
+        if (!process.env.JWT_SECRET) {
+            throw new Error('FATAL: JWT_SECRET is not defined in environment variables');
+        }
+
+        const token = jwt.sign({ userId: user.id, role: user.role, storeId: user.storeId }, process.env.JWT_SECRET, {
             expiresIn: '30d',
         });
 
         res.status(201).json({ token, user: { id: user.id, name: user.name, role: user.role, storeId: user.storeId } });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+    } catch (error: any) {
+        console.error('Registration Error:', error);
+        res.status(500).json({
+            message: 'Server error during registration',
+            details: error.message,
+            type: error.code // Prisma error code if available
+        });
     }
 };
 

@@ -28,6 +28,25 @@ app.get('/', (req, res) => {
     res.send('Kirana King API is running 🚀');
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+import { exec } from 'child_process';
+
+const startServer = () => {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+};
+
+// Auto-run migrations on startup
+console.log('Running database sync...');
+exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
+    if (error) {
+        console.error(`Migration Error: ${error.message}`);
+    }
+    if (stderr) {
+        console.error(`Migration Stderr: ${stderr}`);
+    }
+    console.log(`Migration Stdout: ${stdout}`);
+
+    // Start server regardless of migration success (to avoid crash loops, but log heavily)
+    startServer();
 });
