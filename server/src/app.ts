@@ -37,6 +37,22 @@ app.get('/debug-db', (req, res) => {
     res.json({ url: masked });
 });
 
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+app.get('/debug-tables', async (req, res) => {
+    try {
+        const tables = await prisma.$queryRaw`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public';
+        `;
+        res.json({ tables });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 import { exec } from 'child_process';
 
 // Start server immediately to satisfy Render's port scan
