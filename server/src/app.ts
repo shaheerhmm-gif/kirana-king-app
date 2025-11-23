@@ -25,7 +25,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.send('Kirana King API is running 🚀');
+    res.send('Kirana King API v2 - Debug Mode');
 });
 
 import { exec } from 'child_process';
