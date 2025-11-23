@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Package, ScanLine, BarChart3, User } from 'lucide-react';
+import { Home, Package, ScanLine, BarChart3, Menu as MenuIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 
@@ -18,7 +18,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children, showBottomNav = t
         { icon: Package, label: 'Inventory', path: '/owner/inventory' },
         { icon: ScanLine, label: 'Scan', path: '/owner/quick-sale', highlight: true },
         { icon: BarChart3, label: 'Stats', path: '/owner/analytics' },
-        { icon: User, label: 'Profile', path: '/owner/profile' }, // Placeholder for now
+        { icon: MenuIcon, label: 'Menu', path: '/owner/menu' },
     ];
 
     return (

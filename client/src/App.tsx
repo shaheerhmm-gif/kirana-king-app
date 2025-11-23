@@ -15,6 +15,7 @@ import { SupplierInvoices } from './pages/SupplierInvoices';
 import PurchaseEntry from './pages/PurchaseEntry';
 import { LooseInventory } from './pages/LooseInventory';
 import { ExpiryManagement } from './pages/ExpiryManagement';
+import Menu from './pages/Menu';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; role?: string }> = ({ children, role }) => {
   const { user, isAuthenticated } = useAuth();
@@ -138,6 +139,14 @@ const AppRoutes = () => {
           <Navigate to="/login" />
         )
       } />
+      <Route
+        path="/owner/menu"
+        element={
+          <PrivateRoute role="OWNER">
+            <Menu />
+          </PrivateRoute>
+        }
+      />
     </Routes>
   );
 };
