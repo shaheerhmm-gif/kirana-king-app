@@ -24,29 +24,27 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
 });
 
+
+
 app.get('/', (req, res) => {
     res.send('Kirana King API v2 - Debug Mode');
 });
 
 import { exec } from 'child_process';
 
-const startServer = () => {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+// Start server immediately to satisfy Render's port scan
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+
+    // Run migrations in background after server starts
+    console.log('Running database sync in background...');
+    exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Migration Error: ${error.message}`);
+        }
+        if (stderr) {
+            console.error(`Migration Stderr: ${stderr}`);
+        }
+        console.log(`Migration Stdout: ${stdout}`);
     });
-};
-
-// Auto-run migrations on startup
-console.log('Running database sync...');
-exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
-    if (error) {
-        console.error(`Migration Error: ${error.message}`);
-    }
-    if (stderr) {
-        console.error(`Migration Stderr: ${stderr}`);
-    }
-    console.log(`Migration Stdout: ${stdout}`);
-
-    // Start server regardless of migration success (to avoid crash loops, but log heavily)
-    startServer();
 });
