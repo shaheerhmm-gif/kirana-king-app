@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, CheckCircle, AlertTriangle, XCircle, Loader, ArrowRight, X } from 'lucide-react';
+import { Moon, CheckCircle, AlertTriangle, XCircle, Loader2, ArrowRight, X, ChevronDown } from 'lucide-react';
 import api from '../api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 interface NightCloseModalProps {
     isOpen: boolean;
@@ -35,9 +37,7 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
     const startRitual = async () => {
         setStep('LOADING');
         try {
-            // Simulate a small delay for "Ritual" feel
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Aesthetic delay
             const res = await api.get('/ritual/checks');
             setChecks(res.data);
             setStep('INPUT');
@@ -56,19 +56,16 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
         const newIssues: string[] = [];
         let newStatus: Status = 'GREEN';
 
-        // 1. Cash Check
-        if (diff > 100) { // Tolerance ₹100
+        if (diff > 100) {
             newStatus = 'YELLOW';
-            newIssues.push(`Cash difference: ₹${diff} (Expected: ₹${checks.expectedCash})`);
+            newIssues.push(`Cash diff: ₹${diff} (Exp: ₹${checks.expectedCash})`);
         }
 
-        // 2. Udhaar Check
-        if (checks.totalPendingUdhaar > 10000) { // Threshold ₹10k
+        if (checks.totalPendingUdhaar > 10000) {
             newStatus = newStatus === 'GREEN' ? 'YELLOW' : 'RED';
-            newIssues.push(`High Udhaar Pending: ₹${checks.totalPendingUdhaar}`);
+            newIssues.push(`High Udhaar: ₹${checks.totalPendingUdhaar}`);
         }
 
-        // 3. Stock Check
         if (checks.lowStockItems.length > 0) {
             newStatus = newStatus === 'GREEN' ? 'YELLOW' : 'RED';
             const items = checks.lowStockItems.map(i => i.name).join(', ');
@@ -79,7 +76,6 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
         setIssues(newIssues);
         setStep('RESULT');
 
-        // Save closure in background
         api.post('/ritual/close', {
             cashEntered: entered,
             status: newStatus,
@@ -87,128 +83,146 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
         }).catch(console.error);
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative min-h-[400px] flex flex-col">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                >
-                    <X size={24} />
-                </button>
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                    />
 
-                {step === 'IDLE' && (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                        <div className="bg-indigo-100 p-6 rounded-full mb-6">
-                            <Moon size={48} className="text-indigo-600" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Aaj ki dukaan band karein?</h2>
-                        <p className="text-gray-500 mb-8">
-                            We'll check your cash, udhaar, and stock for tomorrow.
-                        </p>
-                        <button
-                            onClick={startRitual}
-                            className="w-full bg-indigo-600 text-white py-4 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg flex items-center justify-center gap-2"
-                        >
-                            Start Check <ArrowRight size={20} />
-                        </button>
-                    </div>
-                )}
-
-                {step === 'LOADING' && (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                        <Loader size={48} className="text-indigo-600 animate-spin mb-6" />
-                        <h3 className="text-xl font-semibold text-gray-700">Thoda check kar rahe hain...</h3>
-                        <p className="text-gray-500 mt-2">Checking sales, udhaar, and stock...</p>
-                    </div>
-                )}
-
-                {step === 'INPUT' && checks && (
-                    <div className="flex-1 flex flex-col p-8">
-                        <h3 className="text-xl font-bold text-gray-800 mb-6">Cash Verification</h3>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Aaj galle mein kitna cash hai?
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">₹</span>
-                                <input
-                                    type="number"
-                                    value={cashInput}
-                                    onChange={(e) => setCashInput(e.target.value)}
-                                    className="w-full pl-8 pr-4 py-3 text-xl border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-0"
-                                    placeholder="0"
-                                    autoFocus
-                                />
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2">
-                                System expects: ₹{checks.expectedCash}
-                            </p>
+                    {/* Bottom Sheet */}
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                    >
+                        {/* Drag Handle */}
+                        <div className="w-full flex justify-center pt-4 pb-2" onClick={onClose}>
+                            <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
                         </div>
 
-                        <div className="mt-auto">
-                            <button
-                                onClick={calculateResult}
-                                className="w-full bg-indigo-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700"
-                            >
-                                Verify & Close
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {step === 'RESULT' && (
-                    <div className="flex-1 flex flex-col p-8 text-center">
-                        <div className="flex-1 flex flex-col items-center justify-center">
-                            {status === 'GREEN' && (
-                                <>
-                                    <CheckCircle size={64} className="text-green-500 mb-4" />
-                                    <h2 className="text-2xl font-bold text-green-700 mb-2">Shabash!</h2>
-                                    <p className="text-gray-600">Aaj ka din safe & set hai 👌</p>
-                                </>
-                            )}
-                            {status === 'YELLOW' && (
-                                <>
-                                    <AlertTriangle size={64} className="text-yellow-500 mb-4" />
-                                    <h2 className="text-2xl font-bold text-yellow-700 mb-2">Overall Theek Hai</h2>
-                                    <p className="text-gray-600">Bas ye 1-2 cheezein dekh lena:</p>
-                                </>
-                            )}
-                            {status === 'RED' && (
-                                <>
-                                    <XCircle size={64} className="text-red-500 mb-4" />
-                                    <h2 className="text-2xl font-bold text-red-700 mb-2">Attention Needed</h2>
-                                    <p className="text-gray-600">Kuch important issues hain:</p>
-                                </>
+                        <div className="p-6 pb-10 overflow-y-auto">
+                            {step === 'IDLE' && (
+                                <div className="text-center space-y-6">
+                                    <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto">
+                                        <Moon size={40} className="text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-secondary-dark">Night Close Ritual</h2>
+                                        <p className="text-secondary mt-2">Ready to close the shop for today?</p>
+                                    </div>
+                                    <button
+                                        onClick={startRitual}
+                                        className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                    >
+                                        Start Checking <ArrowRight size={20} />
+                                    </button>
+                                </div>
                             )}
 
-                            {issues.length > 0 && (
-                                <div className="mt-6 bg-gray-50 rounded-lg p-4 w-full text-left">
-                                    <ul className="space-y-2">
-                                        {issues.map((issue, idx) => (
-                                            <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                                <span className="mt-1 block w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-                                                {issue}
-                                            </li>
-                                        ))}
-                                    </ul>
+                            {step === 'LOADING' && (
+                                <div className="text-center py-12 space-y-4">
+                                    <Loader2 size={48} className="text-primary animate-spin mx-auto" />
+                                    <p className="text-secondary font-medium">Analyzing today's business...</p>
+                                </div>
+                            )}
+
+                            {step === 'INPUT' && checks && (
+                                <div className="space-y-6">
+                                    <div className="text-center">
+                                        <h3 className="text-xl font-bold text-secondary-dark">Cash Verification</h3>
+                                        <p className="text-sm text-secondary">Count the cash in your galla</p>
+                                    </div>
+
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-bold">₹</span>
+                                        <input
+                                            type="number"
+                                            value={cashInput}
+                                            onChange={(e) => setCashInput(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-4 text-2xl font-bold text-center border-2 border-gray-100 rounded-2xl focus:border-primary focus:ring-0 outline-none bg-gray-50"
+                                            placeholder="0"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="bg-blue-50 p-4 rounded-xl flex justify-between items-center text-sm">
+                                        <span className="text-blue-700 font-medium">System Expects</span>
+                                        <span className="text-blue-800 font-bold">₹{checks.expectedCash}</span>
+                                    </div>
+
+                                    <button
+                                        onClick={calculateResult}
+                                        className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/25 active:scale-[0.98] transition-all"
+                                    >
+                                        Verify & Close
+                                    </button>
+                                </div>
+                            )}
+
+                            {step === 'RESULT' && (
+                                <div className="text-center space-y-6">
+                                    <motion.div
+                                        initial={{ scale: 0.5, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className={cn(
+                                            "w-24 h-24 rounded-full flex items-center justify-center mx-auto",
+                                            status === 'GREEN' ? "bg-green-50 text-green-500" :
+                                                status === 'YELLOW' ? "bg-yellow-50 text-yellow-500" :
+                                                    "bg-red-50 text-red-500"
+                                        )}
+                                    >
+                                        {status === 'GREEN' && <CheckCircle size={48} />}
+                                        {status === 'YELLOW' && <AlertTriangle size={48} />}
+                                        {status === 'RED' && <XCircle size={48} />}
+                                    </motion.div>
+
+                                    <div>
+                                        <h2 className={cn("text-2xl font-bold mb-2",
+                                            status === 'GREEN' ? "text-green-700" :
+                                                status === 'YELLOW' ? "text-yellow-700" : "text-red-700"
+                                        )}>
+                                            {status === 'GREEN' ? "All Good!" :
+                                                status === 'YELLOW' ? "Check These" : "Attention Needed"}
+                                        </h2>
+                                        <p className="text-secondary">
+                                            {status === 'GREEN' ? "Great job today! See you tomorrow." :
+                                                "Review these items before leaving."}
+                                        </p>
+                                    </div>
+
+                                    {issues.length > 0 && (
+                                        <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2">
+                                            {issues.map((issue, idx) => (
+                                                <div key={idx} className="flex items-start gap-3 text-sm text-secondary-dark">
+                                                    <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                                                    <span>{issue}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={onClose}
+                                        className="w-full bg-secondary-dark text-white py-4 rounded-xl font-bold shadow-lg active:scale-[0.98] transition-all"
+                                    >
+                                        Done for the Day
+                                    </button>
                                 </div>
                             )}
                         </div>
-
-                        <button
-                            onClick={onClose}
-                            className="w-full mt-6 bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-900"
-                        >
-                            Done / Ho gaya
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
     );
 };
 
