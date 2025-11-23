@@ -24,6 +24,10 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
 });
 
+app.get('/', (req, res) => {
+    res.send('Kirana King API is running 🚀');
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
