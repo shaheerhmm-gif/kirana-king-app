@@ -46,7 +46,14 @@ app.get('/debug-tables', async (req, res) => {
             FROM information_schema.tables 
             WHERE table_schema = 'public';
         `;
-        res.json({ tables });
+
+        const storeColumns = await prisma.$queryRaw`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'Store';
+        `;
+
+        res.json({ tables, storeColumns });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
