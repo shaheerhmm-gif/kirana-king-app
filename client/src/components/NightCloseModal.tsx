@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, CheckCircle, AlertTriangle, XCircle, Loader2, ArrowRight, X, ChevronDown } from 'lucide-react';
+import { Moon, CheckCircle, AlertTriangle, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';

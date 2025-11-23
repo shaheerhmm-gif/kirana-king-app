@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import MobileLayout from '../components/MobileLayout';
 import api from '../api';
-import { AlertTriangle, TrendingDown, Clock, Moon, ArrowRight, Package, TrendingUp } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, Moon, Package, TrendingUp } from 'lucide-react';
 import DailySalesSummary from '../components/DailySalesSummary';
 import NightCloseModal from '../components/NightCloseModal';
 import { motion } from 'framer-motion';
