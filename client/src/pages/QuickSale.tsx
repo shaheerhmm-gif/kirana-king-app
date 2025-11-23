@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import { parseVoiceCommand } from '../utils/voiceParser';
 
 interface Product {
     id: string;
@@ -56,11 +57,66 @@ const QuickSale = () => {
     const [splitPayments, setSplitPayments] = useState<any[]>([]);
     const [billFormat, setBillFormat] = useState('THERMAL_58MM');
 
+    // Voice Recognition State
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef<any>(null);
+
     useEffect(() => {
         fetchProducts();
         fetchCustomers();
         fetchParkedBills();
-    }, []);
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window) {
+            const SpeechRecognition = (window as any).webkitSpeechRecognition;
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = false;
+            recognitionRef.current.interimResults = false;
+            recognitionRef.current.lang = 'en-IN'; // Works well for Hinglish/Marathi mix
+
+            recognitionRef.current.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                handleVoiceCommand(transcript);
+                setIsListening(false);
+            };
+
+            recognitionRef.current.onerror = (event: any) => {
+                console.error('Speech recognition error', event.error);
+                setIsListening(false);
+                showToast('Voice recognition failed. Try again.', 'error');
+            };
+
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+            };
+        }
+    }, [products]); // Re-bind if products change (for closure access if needed, though we pass products to parser)
+
+    const handleVoiceCommand = (transcript: string) => {
+        console.log('Voice Command:', transcript);
+        const result = parseVoiceCommand(transcript, products);
+
+        if (result.productId) {
+            const product = products.find(p => p.id === result.productId);
+            if (product) {
+                // Add to cart with parsed quantity
+                addToCart(product, result.quantity);
+                showToast(`Added ${result.quantity} x ${product.name}`, 'success');
+            }
+        } else {
+            showToast(`Could not understand "${transcript}"`, 'error');
+        }
+    };
+
+    const toggleListening = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+        } else {
+            recognitionRef.current?.start();
+            setIsListening(true);
+            showToast('Listening... Speak now (e.g., "Do Maggie")', 'info');
+        }
+    };
 
     // Barcode Scanner Integration
     useBarcodeScanner({
@@ -103,7 +159,7 @@ const QuickSale = () => {
         }
     };
 
-    const addToCart = (product: Product) => {
+    const addToCart = (product: Product, qtyToAdd: number = 1) => {
         const existingItem = cart.find(item => item.id === product.id);
         const batch = product.batches?.find((b: any) => b.quantity > 0);
 
@@ -113,19 +169,19 @@ const QuickSale = () => {
         }
 
         if (existingItem) {
-            if (existingItem.quantity + 1 > (batch.quantity || 0)) {
+            if (existingItem.quantity + qtyToAdd > (batch.quantity || 0)) {
                 showToast('Insufficient stock', 'error');
                 return;
             }
             setCart(cart.map(item =>
                 item.id === product.id
-                    ? { ...item, quantity: item.quantity + 1 }
+                    ? { ...item, quantity: item.quantity + qtyToAdd }
                     : item
             ));
         } else {
             setCart([...cart, {
                 ...product,
-                quantity: 1,
+                quantity: qtyToAdd,
                 rate: batch.sellingPrice,
                 batchId: batch.id
             }]);
@@ -325,18 +381,29 @@ const QuickSale = () => {
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            id="search-input"
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search by name or scan barcode... (Ctrl+F)"
-                            className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            autoFocus
-                        />
+                    {/* Search Bar & Voice Input */}
+                    <div className="relative mb-4 flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                id="search-input"
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Search by name or scan barcode... (Ctrl+F)"
+                                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                autoFocus
+                            />
+                        </div>
+                        <button
+                            onClick={toggleListening}
+                            className={`p-3 rounded-lg transition-all ${isListening
+                                ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
+                                : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
+                            title="Voice Command (e.g. 'Ek Maggie')"
+                        >
+                            {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+                        </button>
                     </div>
 
                     {/* Customer Selection */}
