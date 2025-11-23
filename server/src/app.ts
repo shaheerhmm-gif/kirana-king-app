@@ -30,6 +30,13 @@ app.get('/', (req, res) => {
     res.send('Kirana King API v2 - Debug Mode');
 });
 
+app.get('/debug-db', (req, res) => {
+    const dbUrl = process.env.DATABASE_URL || 'NOT_SET';
+    // Show only the part with the ID (between postgres:// and @)
+    const masked = dbUrl.replace(/:[^:@]*@/, ':***@');
+    res.json({ url: masked });
+});
+
 import { exec } from 'child_process';
 
 // Start server immediately to satisfy Render's port scan
