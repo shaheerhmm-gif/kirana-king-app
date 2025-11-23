@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const inventory_controller_1 = require("../controllers/inventory.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.post('/log-voice', auth_middleware_1.authenticate, inventory_controller_1.logInventoryVoice);
+router.get('/expiry-alerts', auth_middleware_1.authenticate, inventory_controller_1.getExpiryAlerts);
+router.get('/low-stock', auth_middleware_1.authenticate, inventory_controller_1.getLowStock);
+router.post('/adjust', auth_middleware_1.authenticate, inventory_controller_1.adjustStock);
+router.put('/batch/:id', auth_middleware_1.authenticate, inventory_controller_1.updateBatch);
+exports.default = router;

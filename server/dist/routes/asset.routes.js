@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const asset_controller_1 = require("../controllers/asset.controller");
+const router = (0, express_1.Router)();
+router.get('/types', auth_middleware_1.authenticate, asset_controller_1.getAssetTypes);
+router.post('/types', auth_middleware_1.authenticate, asset_controller_1.createAssetType);
+router.post('/give', auth_middleware_1.authenticate, asset_controller_1.giveAsset);
+router.post('/return', auth_middleware_1.authenticate, asset_controller_1.returnAsset);
+router.get('/pending/:customerId', auth_middleware_1.authenticate, asset_controller_1.getPendingAssets);
+router.get('/overdue', auth_middleware_1.authenticate, asset_controller_1.getOverdueAssets);
+exports.default = router;

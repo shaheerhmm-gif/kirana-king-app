@@ -1,0 +1,33 @@
+enum AssetTransactionType {
+  GIVEN
+  RETURNED
+}
+
+model AssetType {
+  id                  String   @id @default(uuid())
+  name                String
+  depositAmount       Float
+  typicalReturnDays   Int      @default(7)
+  storeId             String
+  store               Store    @relation(fields: [storeId], references: [id])
+  transactions        AssetTransaction[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([storeId, name])
+}
+
+model AssetTransaction {
+  id                  String   @id @default(uuid())
+  assetTypeId         String
+  assetType           AssetType @relation(fields: [assetTypeId], references: [id])
+  customerId          String
+  customer            Customer  @relation(fields: [customerId], references: [id])
+  quantity            Int
+  type                AssetTransactionType
+  depositAmount       Float
+  transactionDate     DateTime @default(now())
+  expectedReturnDate  DateTime?
+  notes               String?
+  createdAt           DateTime @default(now())
+}

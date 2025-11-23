@@ -1,0 +1,435 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  HELPER
+}
+
+model User {
+  id          String       @id @default(uuid())
+  name        String
+  phone       String       @unique
+  password    String
+  role        UserRole
+  storeId     String
+  store       Store        @relation(fields: [storeId], references: [id])
+  shifts      Shift[]
+  sales       Sale[]
+  parkedBills ParkedBill[] @relation("ParkedBills")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Store {
+  id            String         @id @default(uuid())
+  name          String
+  location      String?
+  users         User[]
+  products      Product[]
+  suppliers     Supplier[]
+  invoices      Invoice[]
+  sales         Sale[]
+  customers     Customer[]
+  assetTypes    AssetType[]
+  campaigns     Campaign[]
+  ondcOrders    ONDCOrder[]
+  shifts        Shift[]
+  parkedBills   ParkedBill[]
+  billTemplates BillTemplate[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+enum LooseLevel {
+  FULL
+  THREE_QUARTER
+  HALF
+  LOW
+  EMPTY
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  barcode     String?
+  description String?
+  isLoose     Boolean  @default(false)
+  looseLevel  LooseLevel?
+  isSoldByWeight Boolean @default(false)
+  pricePerKg  Float?
+  ondcEnabled Boolean  @default(false)
+  ondcProductId String?
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  batches     Batch[]
+  invoiceItems InvoiceItem[]
+  saleItems   SaleItem[]
+  looseConfig LooseConfig?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([storeId, name])
+}
+
+model Batch {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  expiryDate    DateTime
+  purchasePrice Float
+  sellingPrice  Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LooseConfig {
+  id              String   @id @default(uuid())
+  productId       String   @unique
+  product         Product  @relation(fields: [productId], references: [id])
+  fullQuantityKg  Float
+  reorderPointKg  Float    @default(10)
+  leadTimeDays    Int      @default(3)
+  safetyStockDays Int      @default(2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  invoices  Invoice[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FINANCED
+  OVERDUE
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  invoiceDate DateTime
+  dueDate     DateTime?
+  status      InvoiceStatus @default(PENDING)
+  notes       String?
+  totalAmount Float
+  imageUrl    String?
+  items       InvoiceItem[]
+  payments    SupplierPayment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SupplierPayment {
+  id        String      @id @default(uuid())
+  invoiceId String
+  invoice   Invoice     @relation(fields: [invoiceId], references: [id])
+  amount    Float
+  mode      PaymentMode
+  reference String?
+  createdAt DateTime    @default(now())
+}
+
+model InvoiceItem {
+  id        String   @id @default(uuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  rate      Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id                String             @id @default(uuid())
+  name              String
+  phone             String
+  creditLimit       Float              @default(500.0)
+  walletBalance     Float              @default(0)
+  storeId           String
+  store             Store              @relation(fields: [storeId], references: [id])
+  creditEntries     CreditEntry[]
+  sales             Sale[]
+  walletTransactions WalletTransaction[]
+  assetTransactions  AssetTransaction[]
+  campaignLogs      CampaignLog[]
+  parkedBills       ParkedBill[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([storeId, phone])
+}
+
+enum CreditType {
+  DEBIT
+  CREDIT
+}
+
+model CreditEntry {
+  id          String     @id @default(uuid())
+  customerId  String
+  customer    Customer   @relation(fields: [customerId], references: [id])
+  amount      Float
+  type        CreditType
+  description String?
+  createdAt   DateTime   @default(now())
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  REDEMPTION
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  amount      Float
+  type        WalletTransactionType
+  saleId      String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Sale {
+  id          String        @id @default(uuid())
+  storeId     String
+  store       Store         @relation(fields: [storeId], references: [id])
+  customerId  String?
+  customer    Customer?     @relation(fields: [customerId], references: [id])
+  staffId     String?
+  staff       User?         @relation(fields: [staffId], references: [id])
+  totalAmount Float
+  paymentMode PaymentMode   @default(CASH)
+  items       SaleItem[]
+  payments    SalePayment[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  rate      Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AssetTransactionType {
+  GIVEN
+  RETURNED
+}
+
+model AssetType {
+  id                  String   @id @default(uuid())
+  name                String
+  depositAmount       Float
+  typicalReturnDays   Int      @default(7)
+  storeId             String
+  store               Store    @relation(fields: [storeId], references: [id])
+  transactions        AssetTransaction[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([storeId, name])
+}
+
+model AssetTransaction {
+  id                  String   @id @default(uuid())
+  assetTypeId         String
+  assetType           AssetType @relation(fields: [assetTypeId], references: [id])
+  customerId          String
+  customer            Customer  @relation(fields: [customerId], references: [id])
+  quantity            Int
+  type                AssetTransactionType
+  depositAmount       Float
+  transactionDate     DateTime @default(now())
+  expectedReturnDate  DateTime?
+  notes               String?
+  createdAt           DateTime @default(now())
+}
+
+enum CampaignType {
+  INACTIVE
+  BIRTHDAY
+  FESTIVAL
+  CUSTOM
+}
+
+enum CampaignStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Campaign {
+  id                String   @id @default(uuid())
+  name              String
+  type              CampaignType
+  messageTemplate   String
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id])
+  logs              CampaignLog[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CampaignLog {
+  id          String   @id @default(uuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  message     String
+  status      CampaignStatus @default(PENDING)
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+enum ONDCOrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+model ONDCOrder {
+  id              String   @id @default(uuid())
+  ondcOrderId     String   @unique
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id])
+  customerName    String
+  customerPhone   String
+  customerAddress String?
+  items           Json
+  totalAmount     Float
+  status          ONDCOrderStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum AnomalyType {
+  HIGH_VOID_RATE
+  EXCESSIVE_DISCOUNTS
+  CASH_SHORTAGE
+}
+
+enum AnomalySeverity {
+  WARNING
+  CRITICAL
+}
+
+model Shift {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id])
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  totalSales    Int      @default(0)
+  voidsCount    Int      @default(0)
+  expectedCash  Float?
+  actualCash    Float?
+  anomalies     AnomalyLog[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AnomalyLog {
+  id          String   @id @default(uuid())
+  shiftId     String
+  shift       Shift    @relation(fields: [shiftId], references: [id])
+  type        AnomalyType
+  severity    AnomalySeverity
+  description String
+  amount      Float?
+  createdAt   DateTime @default(now())
+}
+
+// ============================================
+// PHASE 1: ENHANCED POS FEATURES
+// ============================================
+
+// Parked/Hold Bills
+model ParkedBill {
+  id          String   @id @default(uuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  userId      String
+  user        User     @relation("ParkedBills", fields: [userId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  items       Json     // Array of cart items
+  subtotal    Float
+  notes       String?
+  parkedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Payment Modes
+enum PaymentMode {
+  CASH
+  UPI
+  CARD
+  CREDIT
+  SPLIT
+}
+
+// Sale Payments (for split payments)
+model SalePayment {
+  id          String      @id @default(uuid())
+  saleId      String
+  sale        Sale        @relation(fields: [saleId], references: [id])
+  mode        PaymentMode
+  amount      Float
+  reference   String?     // UPI ref, card txn id, etc.
+  createdAt   DateTime    @default(now())
+}
+
+// Bill Formats
+enum BillFormat {
+  THERMAL_58MM
+  THERMAL_80MM
+  A4_SIMPLE
+  A4_DETAILED
+}
+
+model BillTemplate {
+  id          String     @id @default(uuid())
+  name        String
+  format      BillFormat
+  template    String     // HTML/CSS template
+  isDefault   Boolean    @default(false)
+  storeId     String
+  store       Store      @relation(fields: [storeId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  @@unique([storeId, name])
+}

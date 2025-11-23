@@ -1,0 +1,40 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+// Import other routes here
+const auth_routes_1 = __importDefault(require("./auth.routes"));
+const inventory_routes_1 = __importDefault(require("./inventory.routes"));
+const invoice_routes_1 = __importDefault(require("./invoice.routes"));
+const credit_routes_1 = __importDefault(require("./credit.routes"));
+const analytics_routes_1 = __importDefault(require("./analytics.routes"));
+const catalog_routes_1 = __importDefault(require("./catalog.routes"));
+const sales_routes_1 = __importDefault(require("./sales.routes"));
+const ritual_routes_1 = __importDefault(require("./ritual.routes"));
+const supplier_routes_1 = __importDefault(require("./supplier.routes"));
+const loose_routes_1 = __importDefault(require("./loose.routes"));
+const expiry_routes_1 = __importDefault(require("./expiry.routes"));
+const wallet_routes_1 = __importDefault(require("./wallet.routes"));
+const asset_routes_1 = __importDefault(require("./asset.routes"));
+const parked_routes_1 = __importDefault(require("./parked.routes"));
+const router = (0, express_1.Router)();
+router.get('/', (req, res) => {
+    res.send('Kirana Tech API');
+});
+router.use('/auth', auth_routes_1.default);
+router.use('/inventory', inventory_routes_1.default);
+router.use('/invoices', invoice_routes_1.default);
+router.use('/credit', credit_routes_1.default);
+router.use('/analytics', analytics_routes_1.default);
+router.use('/catalog', catalog_routes_1.default);
+router.use('/sales', sales_routes_1.default);
+router.use('/ritual', ritual_routes_1.default);
+router.use('/suppliers', supplier_routes_1.default);
+router.use('/loose', loose_routes_1.default);
+router.use('/expiry', expiry_routes_1.default);
+router.use('/wallet', wallet_routes_1.default);
+router.use('/assets', asset_routes_1.default);
+router.use('/parked', parked_routes_1.default);
+exports.default = router;

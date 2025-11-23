@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const credit_controller_1 = require("../controllers/credit.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.post('/transaction', auth_middleware_1.authenticate, credit_controller_1.addCreditTransaction);
+router.get('/balance/:customerId', auth_middleware_1.authenticate, credit_controller_1.getCustomerBalance);
+router.post('/remind', auth_middleware_1.authenticate, credit_controller_1.generateWhatsAppReminder);
+router.get('/customers', auth_middleware_1.authenticate, credit_controller_1.getAllCustomers);
+router.get('/:customerId/trust-score', auth_middleware_1.authenticate, credit_controller_1.getTrustScore);
+exports.default = router;
