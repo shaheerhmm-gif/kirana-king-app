@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 // Stub for OCR - In production this would call Google Cloud Vision API or similar
 // We simulate extracting data from an image.

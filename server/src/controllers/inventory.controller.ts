@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 // Stub for Voice ASR - In production this would call Google Cloud Speech-to-Text
 // Here we accept a text string that represents the "transcribed" voice command.
