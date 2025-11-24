@@ -16,7 +16,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children, showBottomNav = t
     const navItems = [
         { icon: Home, label: 'Home', path: '/owner' },
         { icon: Package, label: 'Inventory', path: '/owner/inventory' },
-        { icon: ScanLine, label: 'Scan', path: '/owner/quick-sale', highlight: true },
+        { icon: ScanLine, label: 'Scan', path: '/owner/quick-sale?scan=true', highlight: true },
         { icon: BarChart3, label: 'Stats', path: '/owner/analytics' },
         { icon: MenuIcon, label: 'Menu', path: '/owner/menu' },
     ];

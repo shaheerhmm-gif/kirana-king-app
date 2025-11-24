@@ -69,14 +69,30 @@ export const SupplierInvoices = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [invoicesRes, suppliersRes, profileRes] = await Promise.all([
+            const [invoicesRes, suppliersRes, profileRes] = await Promise.allSettled([
                 api.get('/suppliers/invoices'),
                 api.get('/suppliers'),
                 api.get('/suppliers/credit-profile')
             ]);
-            setInvoices(invoicesRes.data);
-            setSuppliers(suppliersRes.data);
-            setCreditProfile(profileRes.data);
+
+            if (invoicesRes.status === 'fulfilled') {
+                setInvoices(invoicesRes.value.data);
+            } else {
+                console.error('Failed to load invoices', invoicesRes.reason);
+                showToast('Failed to load invoices', 'error');
+            }
+
+            if (suppliersRes.status === 'fulfilled') {
+                setSuppliers(suppliersRes.value.data);
+            } else {
+                console.error('Failed to load suppliers', suppliersRes.reason);
+            }
+
+            if (profileRes.status === 'fulfilled') {
+                setCreditProfile(profileRes.value.data);
+            } else {
+                console.error('Failed to load credit profile', profileRes.reason);
+            }
         } catch (error) {
             console.error(error);
             showToast('Failed to load data', 'error');

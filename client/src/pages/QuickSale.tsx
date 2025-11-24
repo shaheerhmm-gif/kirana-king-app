@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import OwnerLayout from '../components/OwnerLayout';
 import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff, ScanLine } from 'lucide-react';
 import api from '../api';
@@ -64,6 +65,14 @@ const QuickSale = () => {
 
     // Camera Scanner State
     const [showCameraScanner, setShowCameraScanner] = useState(false);
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('scan') === 'true') {
+            setShowCameraScanner(true);
+        }
+    }, [location]);
 
     useEffect(() => {
         fetchProducts();
@@ -113,6 +122,10 @@ const QuickSale = () => {
     };
 
     const toggleListening = () => {
+        if (!('webkitSpeechRecognition' in window)) {
+            showToast('Voice input not supported in this browser', 'error');
+            return;
+        }
         if (isListening) {
             recognitionRef.current?.stop();
         } else {
@@ -142,7 +155,7 @@ const QuickSale = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await api.get('/products');
+            const res = await api.get('/inventory/products');
             setProducts(res.data);
         } catch (error) {
             console.error(error);

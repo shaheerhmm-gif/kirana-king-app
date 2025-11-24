@@ -25,7 +25,7 @@ const Inventory = () => {
         setLoading(true);
         try {
             if (activeTab === 'ALL') {
-                const res = await api.get('/products');
+                const res = await api.get('/inventory/products');
                 // Calculate total stock for each product
                 const productsWithStock = res.data.map((p: any) => ({
                     ...p,

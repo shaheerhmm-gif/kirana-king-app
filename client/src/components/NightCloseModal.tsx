@@ -93,7 +93,7 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
                     />
 
                     {/* Bottom Sheet */}
@@ -102,7 +102,7 @@ const NightCloseModal: React.FC<NightCloseModalProps> = ({ isOpen, onClose }) =>
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-[100] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
                     >
                         {/* Drag Handle */}
                         <div className="w-full flex justify-center pt-4 pb-2" onClick={onClose}>

@@ -242,3 +242,21 @@ export const updateBatch = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error updating batch' });
     }
 };
+
+export const getProducts = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const products = await prisma.product.findMany({
+            where: { storeId },
+            include: {
+                batches: {
+                    where: { quantity: { gt: 0 } }
+                }
+            }
+        });
+        res.json(products);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

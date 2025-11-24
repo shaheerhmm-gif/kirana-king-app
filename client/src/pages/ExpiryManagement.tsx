@@ -76,7 +76,22 @@ export const ExpiryManagement = () => {
         );
     }
 
-    if (!data) return null;
+    if (!data) {
+        return (
+            <OwnerLayout>
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                    <AlertCircle size={48} className="mb-4 text-red-400" />
+                    <p>Failed to load data. Please try again.</p>
+                    <button
+                        onClick={fetchExpiringItems}
+                        className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </OwnerLayout>
+        );
+    }
 
     return (
         <OwnerLayout>

@@ -43,9 +43,9 @@ export const LooseInventory = () => {
         try {
             const res = await api.get('/loose');
             setLooseItems(res.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            showToast('Failed to load loose items', 'error');
+            showToast(error.response?.data?.message || 'Failed to load loose items', 'error');
         } finally {
             setLoading(false);
         }

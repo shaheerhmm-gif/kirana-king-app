@@ -168,7 +168,10 @@ const Credit = () => {
                     <h2 className="text-lg font-semibold mb-4">Customer List</h2>
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {customers.length === 0 ? (
-                            <p className="text-gray-500">No customers yet.</p>
+                            <div className="text-center py-8 text-gray-500">
+                                <p>No customers found.</p>
+                                <p className="text-xs">Add customers from the main menu or during a sale.</p>
+                            </div>
                         ) : (
                             customers.map(c => (
                                 <div

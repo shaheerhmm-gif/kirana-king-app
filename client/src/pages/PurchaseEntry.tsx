@@ -51,7 +51,7 @@ const PurchaseEntry = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await api.get('/products');
+            const res = await api.get('/inventory/products');
             setProducts(res.data);
         } catch (error) {
             console.error(error);
@@ -59,10 +59,10 @@ const PurchaseEntry = () => {
     };
 
     const handleAddItem = () => {
-        if (!currentItem.productId || currentItem.quantity <= 0 || currentItem.rate <= 0 || !currentItem.expiryDate) {
-            showToast('Please fill all item details', 'error');
-            return;
-        }
+        if (!currentItem.productId) { showToast('Please select a product', 'error'); return; }
+        if (currentItem.quantity <= 0) { showToast('Quantity must be greater than 0', 'error'); return; }
+        if (currentItem.rate <= 0) { showToast('Rate must be greater than 0', 'error'); return; }
+        if (!currentItem.expiryDate) { showToast('Please select expiry date', 'error'); return; }
 
         setItems([...items, currentItem]);
         // Reset current item but keep expiry date as it might be same batch

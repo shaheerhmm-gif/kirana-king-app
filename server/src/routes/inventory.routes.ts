@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { logInventoryVoice, getExpiryAlerts, getLowStock, adjustStock, updateBatch } from '../controllers/inventory.controller';
+import { logInventoryVoice, getExpiryAlerts, getLowStock, adjustStock, updateBatch, getProducts } from '../controllers/inventory.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -9,5 +9,6 @@ router.get('/expiry-alerts', authenticate, getExpiryAlerts);
 router.get('/low-stock', authenticate, getLowStock);
 router.post('/adjust', authenticate, adjustStock);
 router.put('/batch/:id', authenticate, updateBatch);
+router.get('/products', authenticate, getProducts);
 
 export default router;
