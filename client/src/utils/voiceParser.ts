@@ -40,10 +40,7 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
         quantity = NUMBER_MAP[firstWord];
         productWords = words.slice(1);
     } else {
-        // Check if any word is a number (less reliable, but handles "Milk do" style)
-        // For MVP, let's stick to "Quantity Product" or "Product" (default 1)
-        // Or handle "Product Quantity" (e.g. "Maggie do")
-
+        // Check if any word is a number (handles "Maggie do" style)
         const lastWord = words[words.length - 1];
         const lastNumVal = parseInt(lastWord);
 
@@ -58,18 +55,15 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
         }
     }
 
-    // Filter filler words
-    const fillers = ['chahiye', 'karo', 'add', 'de', 'do', 'dya', 'please', 'pack'];
-    // Note: 'do' is tricky as it means '2' in Hindi but 'give' in Hindi/English.
-    // Context matters. If we already found a number, 'do' might be filler.
-    // If we parsed 'do' as 2, we are good.
+    // Filter filler words - BUT be careful with 'do' since it means '2' in Hindi
+    // Only filter 'do' if we already extracted a different quantity
+    const fillers = ['chahiye', 'karo', 'add', 'de', 'dya', 'please', 'pack'];
+    // Add 'do' to fillers only if we've already found a quantity that's not 1 (default)
+    const fillersToUse = quantity !== 1 ? [...fillers, 'do'] : fillers;
 
-    const cleanProductSearch = productWords.filter(w => !fillers.includes(w)).join(' ');
+    const cleanProductSearch = productWords.filter(w => !fillersToUse.includes(w)).join(' ');
 
     // 2. Fuzzy Match Product
-    // Simple inclusion check or Levenshtein could be used. 
-    // For MVP: Check if product name contains the search string or vice versa.
-
     let bestMatch: Product | null = null;
     let bestScore = 0;
 
@@ -82,7 +76,7 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
         }
         // Contains match
         else if (pName.includes(cleanProductSearch) && cleanProductSearch.length > 2) {
-            const score = cleanProductSearch.length / pName.length * 50; // Crude score
+            const score = cleanProductSearch.length / pName.length * 50;
             if (score > bestScore) {
                 bestMatch = p;
                 bestScore = score;
@@ -98,10 +92,15 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
         }
     });
 
+    console.log('[Voice Parser] Input:', transcript);
+    console.log('[Voice Parser] Quantity:', quantity);
+    console.log('[Voice Parser] Product Search:', cleanProductSearch);
+    console.log('[Voice Parser] Best Match:', bestMatch?.name, 'Score:', bestScore);
+
     return {
-        productId: (bestMatch as Product | null)?.id || null,
+        productId: bestMatch?.id || null,
         quantity,
         originalTranscript: transcript,
-        matchedName: (bestMatch as Product | null)?.name
+        matchedName: bestMatch?.name
     };
 };
