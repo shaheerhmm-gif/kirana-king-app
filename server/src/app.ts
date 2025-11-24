@@ -31,16 +31,4 @@ app.get('/', (req, res) => {
 // Start server for Render deployment
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-
-    // Run migrations in background after server starts
-    console.log('Running database sync in background...');
-    exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Migration Error: ${error.message}`);
-        }
-        if (stderr) {
-            console.error(`Migration Stderr: ${stderr}`);
-        }
-        console.log(`Migration Stdout: ${stdout}`);
-    });
 });
