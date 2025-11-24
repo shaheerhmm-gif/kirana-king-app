@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, ShoppingCart, FileText, Users, BarChart2, LogOut, HelpCircle, Package, Wheat, Calendar, Book } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, FileText, Users, BarChart2, LogOut, HelpCircle, Package, Wheat, Calendar, Book, Settings } from 'lucide-react';
 
 const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { logout, user } = useAuth();
@@ -18,6 +18,7 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { path: '/owner/inventory', icon: <ShoppingCart size={20} />, label: 'Inventory' },
         { path: '/owner/invoices', icon: <FileText size={20} />, label: 'Invoices' },
         { path: '/owner/suppliers', icon: <Package size={20} />, label: 'Suppliers' },
+        { path: '/owner/staff', icon: <Users size={20} />, label: 'Staff' },
         { path: '/purchase/orders', icon: <ShoppingCart size={20} />, label: 'Purchases' },
         { path: '/purchase/returns', icon: <LogOut size={20} />, label: 'Returns' },
         { path: '/owner/accounting', icon: <Book size={20} />, label: 'Accounting' },
@@ -26,8 +27,11 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { path: '/owner/expiry', icon: <Calendar size={20} />, label: 'Expiry' },
         { path: '/owner/credit', icon: <Users size={20} />, label: 'Credit' },
         { path: '/owner/analytics', icon: <BarChart2 size={20} />, label: 'Analytics' },
+        { path: '/owner/settings', icon: <Settings size={20} />, label: 'Settings' },
         { path: '/owner/guide', icon: <HelpCircle size={20} />, label: 'Guide' },
     ];
+
+    const isActive = (path: string) => location.pathname === path;
 
     return (
         <div className="flex h-screen bg-gray-100">
@@ -37,12 +41,12 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <h2 className="text-xl font-bold text-indigo-600">KiranaKing</h2>
                     <p className="text-sm text-gray-500">Store ID: {user?.storeId}</p>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {navItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:bg-gray-50'
+                            className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${isActive(item.path) ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             {item.icon}
@@ -61,7 +65,7 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
             </div>
 
-            {/* Mobile Header */}
+            {/* Mobile Header & Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="bg-white shadow-sm p-4 md:hidden flex justify-between items-center">
                     <h1 className="text-lg font-bold">KiranaKing</h1>
@@ -77,23 +81,23 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
                 {/* Mobile Bottom Nav */}
                 <div className="md:hidden bg-white border-t flex justify-around p-3 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40">
-                    <Link to="/owner" className={`flex flex-col items-center ${location.pathname === '/owner' ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <LayoutDashboard size={22} strokeWidth={location.pathname === '/owner' ? 2.5 : 2} />
+                    <Link to="/owner" className={`flex flex-col items-center ${isActive('/owner') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <LayoutDashboard size={22} strokeWidth={isActive('/owner') ? 2.5 : 2} />
                         <span className="text-[10px] font-medium mt-1">Home</span>
                     </Link>
-                    <Link to="/owner/inventory" className={`flex flex-col items-center ${location.pathname === '/owner/inventory' ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <ShoppingCart size={22} strokeWidth={location.pathname === '/owner/inventory' ? 2.5 : 2} />
+                    <Link to="/owner/inventory" className={`flex flex-col items-center ${isActive('/owner/inventory') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <ShoppingCart size={22} strokeWidth={isActive('/owner/inventory') ? 2.5 : 2} />
                         <span className="text-[10px] font-medium mt-1">Inventory</span>
                     </Link>
                     <Link to="/owner/quick-sale?scan=true" className="relative -top-5 bg-indigo-600 text-white p-3 rounded-full shadow-lg shadow-indigo-600/30 border-4 border-white flex items-center justify-center">
                         <Package size={24} />
                     </Link>
-                    <Link to="/owner/analytics" className={`flex flex-col items-center ${location.pathname === '/owner/analytics' ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <BarChart2 size={22} strokeWidth={location.pathname === '/owner/analytics' ? 2.5 : 2} />
+                    <Link to="/owner/analytics" className={`flex flex-col items-center ${isActive('/owner/analytics') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <BarChart2 size={22} strokeWidth={isActive('/owner/analytics') ? 2.5 : 2} />
                         <span className="text-[10px] font-medium mt-1">Stats</span>
                     </Link>
-                    <Link to="/owner/menu" className={`flex flex-col items-center ${location.pathname === '/owner/menu' ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        <Users size={22} strokeWidth={location.pathname === '/owner/menu' ? 2.5 : 2} />
+                    <Link to="/owner/menu" className={`flex flex-col items-center ${isActive('/owner/menu') ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <Users size={22} strokeWidth={isActive('/owner/menu') ? 2.5 : 2} />
                         <span className="text-[10px] font-medium mt-1">Menu</span>
                     </Link>
                 </div>

@@ -92,3 +92,106 @@ export const login = async (req: Request, res: Response) => {
         });
     }
 };
+
+export const getHelpers = async (req: any, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const helpers = await prisma.user.findMany({
+            where: {
+                storeId,
+                role: { in: ['HELPER', 'MANAGER', 'CASHIER'] }
+            },
+            select: {
+                id: true,
+                name: true,
+                phone: true,
+                role: true,
+                createdAt: true
+            }
+        });
+        res.json(helpers);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching helpers' });
+    }
+};
+
+export const createHelper = async (req: any, res: Response) => {
+    try {
+        const { name, phone, password, role } = req.body;
+        const storeId = req.user!.storeId;
+
+        const existingUser = await prisma.user.findUnique({ where: { phone } });
+        if (existingUser) {
+            return res.status(400).json({ message: 'User with this phone already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                name,
+                phone,
+                password: hashedPassword,
+                role: role || 'HELPER',
+                storeId
+            }
+        });
+
+        res.status(201).json({ message: 'Helper created successfully', user: { id: user.id, name: user.name } });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error creating helper' });
+    }
+};
+
+export const updateHelper = async (req: any, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, phone, password, role } = req.body;
+        const storeId = req.user!.storeId;
+
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user || user.storeId !== storeId) {
+            return res.status(404).json({ message: 'Helper not found' });
+        }
+
+        const data: any = { name, phone, role };
+        if (password) {
+            data.password = await bcrypt.hash(password, 10);
+        }
+
+        await prisma.user.update({
+            where: { id },
+            data
+        });
+
+        res.json({ message: 'Helper updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error updating helper' });
+    }
+};
+
+export const deleteHelper = async (req: any, res: Response) => {
+    try {
+        const { id } = req.params;
+        const storeId = req.user!.storeId;
+
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user || user.storeId !== storeId) {
+            return res.status(404).json({ message: 'Helper not found' });
+        }
+
+        if (user.id === req.user!.userId) {
+            return res.status(400).json({ message: 'Cannot delete your own account' });
+        }
+
+        await prisma.user.delete({ where: { id } });
+
+        res.json({ message: 'Helper deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error deleting helper' });
+    }
+};

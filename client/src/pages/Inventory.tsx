@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
-import { Package, AlertTriangle, Clock, Search, Edit2 } from 'lucide-react';
+import { Package, AlertTriangle, Clock, Search, Edit2, Plus } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import StockAdjustmentModal from '../components/StockAdjustmentModal';
 import BatchListModal from '../components/BatchListModal';
+import ProductForm from '../components/ProductForm';
 
 const Inventory = () => {
     const [activeTab, setActiveTab] = useState<'ALL' | 'LOW' | 'EXPIRING'>('ALL');
@@ -15,6 +16,8 @@ const Inventory = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [viewingBatchesFor, setViewingBatchesFor] = useState<any | null>(null);
+    const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<any | null>(null);
     const { showToast } = useToast();
 
     useEffect(() => {
@@ -91,6 +94,12 @@ const Inventory = () => {
                         >
                             <Clock size={18} /> Expiring
                         </button>
+                        <button
+                            onClick={() => setIsCreatingProduct(true)}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
+                        >
+                            <Plus size={18} /> Add Product
+                        </button>
                     </div>
                 </div>
 
@@ -140,17 +149,23 @@ const Inventory = () => {
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => setViewingBatchesFor(product)}
-                                                            className="p-3 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                            className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                                             title="View Batches"
                                                         >
-                                                            <Clock size={20} />
+                                                            <Clock size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setEditingProduct(product)}
+                                                            className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                            title="Edit Product"
+                                                        >
+                                                            <Edit2 size={18} />
                                                         </button>
                                                         <button
                                                             onClick={() => setSelectedProduct(product)}
-                                                            className="p-3 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                                            title="Adjust Stock"
+                                                            className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
                                                         >
-                                                            <Edit2 size={20} />
+                                                            Adjust
                                                         </button>
                                                     </div>
                                                 </div>
@@ -226,15 +241,23 @@ const Inventory = () => {
                     onClose={() => setViewingBatchesFor(null)}
                     onUpdate={() => {
                         fetchData();
-                        // Ideally we should also update the viewingBatchesFor object to reflect changes immediately
-                        // But fetchData will refresh the main list. 
-                        // To refresh the modal, we might need to re-fetch the specific product or close it.
-                        // Let's just close it for simplicity or re-fetch.
-                        // Better UX: Re-fetch data and update viewingBatchesFor if it's still open.
-                        // For MVP: Close modal on update or let user see main list update.
-                        // Let's keep it open and try to refresh.
-                        setViewingBatchesFor(null); // Close for now to force refresh
+                        setViewingBatchesFor(null);
                     }}
+                />
+            )}
+
+            {(isCreatingProduct || editingProduct) && (
+                <ProductForm
+                    onClose={() => {
+                        setIsCreatingProduct(false);
+                        setEditingProduct(null);
+                    }}
+                    onSuccess={() => {
+                        setIsCreatingProduct(false);
+                        setEditingProduct(null);
+                        fetchData();
+                    }}
+                    initialData={editingProduct}
                 />
             )}
         </OwnerLayout>

@@ -38,9 +38,12 @@ router.use('/expiry', expiryRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/assets', assetRoutes);
 router.use('/parked', parkedRoutes);
+import storeRoutes from './store.routes';
+
 router.use('/branch', branchRoutes);
 router.use('/purchase', purchaseRoutes);
 router.use('/returns', supplierReturnRoutes);
 router.use('/accounting', accountingRoutes);
+router.use('/store', storeRoutes);
 
 export default router;

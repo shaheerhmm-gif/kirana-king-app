@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import prisma from '../prisma';
 
@@ -9,189 +9,105 @@ export const getSuppliers = async (req: AuthRequest, res: Response) => {
             where: { storeId },
             include: {
                 _count: {
-                    select: { invoices: true }
+                    select: { products: true, invoices: true }
                 }
-            }
+            },
+            orderBy: { name: 'asc' }
         });
         res.json(suppliers);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching suppliers' });
     }
 };
 
 export const createSupplier = async (req: AuthRequest, res: Response) => {
     try {
+        const { name, phone, gstin, address, state, pincode } = req.body;
         const storeId = req.user!.storeId;
-        const { name, phone } = req.body;
-        const supplier = await prisma.supplier.create({
-            data: { name, phone, storeId }
-        });
-        res.json(supplier);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
 
-export const getInvoices = async (req: AuthRequest, res: Response) => {
-    try {
-        const storeId = req.user!.storeId;
-        const invoices = await prisma.invoice.findMany({
-            where: { storeId },
-            include: { supplier: true },
-            orderBy: { dueDate: 'asc' }
-        });
-        res.json(invoices);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-export const createInvoice = async (req: AuthRequest, res: Response) => {
-    try {
-        const storeId = req.user!.storeId;
-        const { supplierId, amount, invoiceDate, dueDate, notes, items } = req.body; // items: { productId, quantity, rate, expiryDate }[]
-
-        // 1. Create Invoice
-        const invoice = await prisma.invoice.create({
-            data: {
-                storeId,
-                supplierId,
-                totalAmount: parseFloat(amount),
-                invoiceDate: new Date(invoiceDate),
-                dueDate: dueDate ? new Date(dueDate) : null,
-                notes,
-                status: 'PENDING',
-                items: {
-                    create: items.map((item: any) => ({
-                        productId: item.productId,
-                        quantity: item.quantity,
-                        rate: item.rate
-                    }))
-                }
-            },
-            include: { items: true }
+        const existingSupplier = await prisma.supplier.findFirst({
+            where: { storeId, name: { equals: name, mode: 'insensitive' } }
         });
 
-        // 2. Create Batches (Inward Stock)
-        // For each item, create a new batch
-        for (const item of items) {
-            await prisma.batch.create({
-                data: {
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    purchasePrice: item.rate,
-                    sellingPrice: item.sellingPrice || null, // Optional: update selling price
-                    expiryDate: new Date(item.expiryDate)
-                }
-            });
+        if (existingSupplier) {
+            return res.status(400).json({ message: 'Supplier with this name already exists' });
         }
 
-        res.json(invoice);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-export const recordPayment = async (req: AuthRequest, res: Response) => {
-    try {
-        const { invoiceId, amount, mode, reference } = req.body;
-
-        // 1. Create Payment Record
-        const payment = await prisma.supplierPayment.create({
+        const supplier = await prisma.supplier.create({
             data: {
-                invoiceId,
-                amount: parseFloat(amount),
-                mode,
-                reference
+                name,
+                phone,
+                gstin,
+                address,
+                state,
+                pincode,
+                storeId
             }
         });
 
-        // 2. Update Invoice Status
-        const invoice = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
-            include: { payments: true }
-        });
-
-        if (invoice) {
-            const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
-            const status = totalPaid >= invoice.totalAmount ? 'PAID' : 'PENDING';
-
-            await prisma.invoice.update({
-                where: { id: invoiceId },
-                data: { status }
-            });
-        }
-
-        res.json(payment);
+        res.status(201).json({ message: 'Supplier created successfully', supplier });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error creating supplier' });
     }
 };
 
-export const getCreditProfile = async (req: AuthRequest, res: Response) => {
+export const updateSupplier = async (req: AuthRequest, res: Response) => {
     try {
+        const { id } = req.params;
+        const { name, phone, gstin, address, state, pincode } = req.body;
         const storeId = req.user!.storeId;
 
-        // 1. Calculate Average Monthly Sales (Last 3 Months)
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-        const sales = await prisma.sale.aggregate({
-            where: {
-                storeId,
-                createdAt: { gte: threeMonthsAgo }
-            },
-            _sum: { totalAmount: true }
-        });
-
-        const totalSales = sales._sum.totalAmount || 0;
-        const avgMonthlySales = totalSales / 3;
-
-        // 2. Calculate Repayment Factor
-        // For MVP, we'll simulate this based on invoice status
-        // In a real app, we'd track payment history logs
-        const invoices = await prisma.invoice.findMany({
-            where: { storeId }
-        });
-
-        const totalInvoices = invoices.length;
-        const overdueInvoices = invoices.filter(i => {
-            return i.status === 'OVERDUE' || (i.dueDate && new Date(i.dueDate) < new Date() && i.status === 'PENDING');
-        }).length;
-
-        const onTimeInvoices = totalInvoices - overdueInvoices;
-
-        let repaymentFactor = 1.0;
-        if (totalInvoices > 0) {
-            const onTimeRatio = onTimeInvoices / totalInvoices;
-            repaymentFactor = Math.max(0.5, Math.min(1.5, onTimeRatio * 1.5));
+        const supplier = await prisma.supplier.findUnique({ where: { id } });
+        if (!supplier || supplier.storeId !== storeId) {
+            return res.status(404).json({ message: 'Supplier not found' });
         }
 
-        // 3. Calculate Credit Limit
-        const baseLimit = avgMonthlySales * 0.20;
-        const maxCredit = Math.round(baseLimit * repaymentFactor);
-
-        // 4. Calculate Risk Score
-        let riskScore = 100;
-        // Penalty for overdue
-        riskScore -= (overdueInvoices * 10);
-        // Volatility penalty (simulated for MVP as 0)
-
-        riskScore = Math.max(0, Math.min(100, riskScore));
-
-        res.json({
-            avgMonthlySales,
-            repaymentFactor,
-            creditLimit: maxCredit,
-            riskScore,
-            totalInvoices,
-            overdueInvoices
+        const updatedSupplier = await prisma.supplier.update({
+            where: { id },
+            data: {
+                name,
+                phone,
+                gstin,
+                address,
+                state,
+                pincode
+            }
         });
 
+        res.json({ message: 'Supplier updated successfully', supplier: updatedSupplier });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error updating supplier' });
+    }
+};
+
+export const deleteSupplier = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const storeId = req.user!.storeId;
+
+        const supplier = await prisma.supplier.findUnique({
+            where: { id },
+            include: { _count: { select: { products: true, invoices: true } } }
+        });
+
+        if (!supplier || supplier.storeId !== storeId) {
+            return res.status(404).json({ message: 'Supplier not found' });
+        }
+
+        if (supplier._count.products > 0 || supplier._count.invoices > 0) {
+            return res.status(400).json({
+                message: `Cannot delete supplier. Linked to ${supplier._count.products} products and ${supplier._count.invoices} invoices.`
+            });
+        }
+
+        await prisma.supplier.delete({ where: { id } });
+
+        res.json({ message: 'Supplier deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error deleting supplier' });
     }
 };

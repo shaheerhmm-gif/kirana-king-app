@@ -4,6 +4,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import OwnerDashboard from './pages/OwnerDashboard';
 import Inventory from './pages/Inventory';
+import Suppliers from './pages/Suppliers';
+import Staff from './pages/Staff';
+import Settings from './pages/Settings';
 import Invoices from './pages/Invoices';
 import Credit from './pages/Credit';
 import Analytics from './pages/Analytics';
@@ -40,6 +43,12 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/catalog/:storeId" element={<Catalog />} />
+
+      <Route path="/inventory" element={<Inventory />} />
+      <Route path="/suppliers" element={<Suppliers />} />
+      <Route path="/staff" element={<Staff />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/invoices" element={<Invoices />} />
 
       <Route
         path="/owner"
@@ -145,9 +154,6 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
-      import Accounting from './pages/Accounting';
-
-      // ... existing imports ...
 
       <Route
         path="/owner/accounting"
@@ -157,9 +163,6 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
-      import Reports from './pages/Reports';
-
-      // ... existing imports ...
 
       <Route
         path="/owner/reports"
