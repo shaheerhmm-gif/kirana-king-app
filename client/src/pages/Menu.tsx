@@ -7,62 +7,66 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+
 const Menu = () => {
     const navigate = useNavigate();
     const { logout, user } = useAuth();
+    const { t } = useTranslation();
 
     const menuItems = [
         {
-            title: 'Credit / Udhaar',
-            desc: 'Manage customer debts',
+            title: t('menu.credit_udhaar'),
+            desc: t('menu.manage_debts'),
             icon: Users,
             path: '/owner/credit',
             color: 'text-blue-600',
             bg: 'bg-blue-50'
         },
         {
-            title: 'Invoices',
-            desc: 'View past customer bills',
+            title: t('menu.invoices'),
+            desc: t('menu.view_past_bills'),
             icon: FileText,
             path: '/owner/invoices',
             color: 'text-purple-600',
             bg: 'bg-purple-50'
         },
         {
-            title: 'Suppliers',
-            desc: 'Manage supplier bills',
+            title: t('menu.suppliers'),
+            desc: t('menu.manage_supplier_bills'),
             icon: Truck,
             path: '/owner/suppliers',
             color: 'text-orange-600',
             bg: 'bg-orange-50'
         },
         {
-            title: 'Purchase Entry',
-            desc: 'Add incoming stock',
+            title: t('menu.purchase_entry'),
+            desc: t('menu.add_incoming_stock'),
             icon: Package,
             path: '/owner/purchase',
             color: 'text-green-600',
             bg: 'bg-green-50'
         },
         {
-            title: 'Loose Items',
-            desc: 'Sugar, Rice, Oil etc.',
+            title: t('menu.loose_items'),
+            desc: t('menu.sugar_rice_oil'),
             icon: Wheat,
             path: '/owner/loose-inventory',
             color: 'text-yellow-600',
             bg: 'bg-yellow-50'
         },
         {
-            title: 'Expiry Check',
-            desc: 'Track expiring items',
+            title: t('menu.expiry_check'),
+            desc: t('menu.track_expiring'),
             icon: Calendar,
             path: '/owner/expiry',
             color: 'text-red-600',
             bg: 'bg-red-50'
         },
         {
-            title: 'App Guide',
-            desc: 'How to use the app',
+            title: t('menu.app_guide'),
+            desc: t('menu.how_to_use'),
             icon: HelpCircle,
             path: '/owner/guide',
             color: 'text-indigo-600',
@@ -71,7 +75,7 @@ const Menu = () => {
     ];
 
     const handleLogout = () => {
-        if (window.confirm('Are you sure you want to logout?')) {
+        if (window.confirm(t('menu.logout_confirm'))) {
             logout();
             navigate('/login');
         }
@@ -87,6 +91,9 @@ const Menu = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-secondary-dark">{user?.name || 'Store Owner'}</h1>
                         <p className="text-sm text-secondary">Store ID: {user?.storeId}</p>
+                    </div>
+                    <div className="ml-auto">
+                        <LanguageSwitcher />
                     </div>
                 </div>
 
@@ -117,11 +124,11 @@ const Menu = () => {
                     className="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 mt-4 hover:bg-red-100 transition-colors"
                 >
                     <LogOut size={20} />
-                    Logout
+                    {t('menu.logout')}
                 </button>
 
                 <p className="text-center text-xs text-gray-400 mt-6">
-                    KiranaKing v2.0 • Made with ❤️
+                    {t('menu.made_with_love')}
                 </p>
             </div>
         </MobileLayout>

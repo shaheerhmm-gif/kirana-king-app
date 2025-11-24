@@ -6,7 +6,11 @@ import DailySalesSummary from '../components/DailySalesSummary';
 import NightCloseModal from '../components/NightCloseModal';
 import { motion } from 'framer-motion';
 
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+
 const OwnerDashboard = () => {
+    const { t } = useTranslation();
     const [expiryAlerts, setExpiryAlerts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showNightClose, setShowNightClose] = useState(false);
@@ -34,16 +38,19 @@ const OwnerDashboard = () => {
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl font-bold text-secondary-dark">Morning Briefing</h1>
-                        <p className="text-sm text-secondary">Here's what's happening today</p>
+                        <h1 className="text-2xl font-bold text-secondary-dark">{t('dashboard.morning_briefing')}</h1>
+                        <p className="text-sm text-secondary">{t('dashboard.whats_happening')}</p>
                     </div>
-                    <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowNightClose(true)}
-                        className="bg-secondary-dark text-white p-3 rounded-full shadow-lg shadow-secondary-dark/20"
-                    >
-                        <Moon size={20} />
-                    </motion.button>
+                    <div className="flex items-center gap-2">
+                        <LanguageSwitcher />
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowNightClose(true)}
+                            className="bg-secondary-dark text-white p-3 rounded-full shadow-lg shadow-secondary-dark/20"
+                        >
+                            <Moon size={20} />
+                        </motion.button>
+                    </div>
                 </div>
 
                 {/* Sales Summary Card */}
@@ -64,7 +71,7 @@ const OwnerDashboard = () => {
                             <span className="text-xs font-medium text-secondary">Critical</span>
                         </div>
                         <h3 className="text-2xl font-bold text-secondary-dark">{redAlerts.length}</h3>
-                        <p className="text-[10px] text-red-500 font-medium">Expiring &lt; 48h</p>
+                        <p className="text-[10px] text-red-500 font-medium">{t('dashboard.expiring_soon')}</p>
                     </motion.div>
 
                     <motion.div
@@ -80,7 +87,7 @@ const OwnerDashboard = () => {
                             <span className="text-xs font-medium text-secondary">Warning</span>
                         </div>
                         <h3 className="text-2xl font-bold text-secondary-dark">{amberAlerts.length}</h3>
-                        <p className="text-[10px] text-amber-500 font-medium">Expiring in 7d</p>
+                        <p className="text-[10px] text-amber-500 font-medium">{t('dashboard.expiring_week')}</p>
                     </motion.div>
                 </div>
 
@@ -95,9 +102,9 @@ const OwnerDashboard = () => {
 
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-blue-100 text-xs font-medium mb-1">Inventory Health</p>
-                            <h3 className="text-lg font-bold">Check Dead Stock</h3>
-                            <p className="text-xs text-blue-100 mt-1">Items not sold in 60+ days</p>
+                            <p className="text-blue-100 text-xs font-medium mb-1">{t('dashboard.inventory_health')}</p>
+                            <h3 className="text-lg font-bold">{t('dashboard.check_dead_stock')}</h3>
+                            <p className="text-xs text-blue-100 mt-1">{t('dashboard.dead_stock_desc')}</p>
                         </div>
                         <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
                             <TrendingDown size={20} />
@@ -108,9 +115,9 @@ const OwnerDashboard = () => {
                 {/* Action Items List */}
                 <div>
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-secondary-dark">Action Items</h2>
+                        <h2 className="text-lg font-bold text-secondary-dark">{t('dashboard.action_items')}</h2>
                         <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-full">
-                            {redAlerts.length} Pending
+                            {redAlerts.length} {t('dashboard.pending')}
                         </span>
                     </div>
 
@@ -125,8 +132,8 @@ const OwnerDashboard = () => {
                             <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <TrendingUp size={24} />
                             </div>
-                            <p className="text-green-800 font-medium">All clear!</p>
-                            <p className="text-green-600 text-xs mt-1">No critical expiry alerts today.</p>
+                            <p className="text-green-800 font-medium">{t('dashboard.all_clear')}</p>
+                            <p className="text-green-600 text-xs mt-1">{t('dashboard.no_critical_alerts')}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -145,12 +152,12 @@ const OwnerDashboard = () => {
                                         <div>
                                             <p className="font-semibold text-secondary-dark text-sm">{alert.productName}</p>
                                             <p className="text-xs text-red-500 font-medium">
-                                                Expires {new Date(alert.expiryDate).toLocaleDateString()}
+                                                {t('dashboard.expires')} {new Date(alert.expiryDate).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>
                                     <button className="text-xs font-bold text-primary bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors">
-                                        Discount
+                                        {t('dashboard.discount')}
                                     </button>
                                 </motion.div>
                             ))}
