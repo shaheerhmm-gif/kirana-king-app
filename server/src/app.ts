@@ -28,19 +28,23 @@ app.get('/', (req, res) => {
     res.send('Kirana King API is running 🚀');
 });
 
-// Start server immediately to satisfy Render's port scan
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Only start server if not running in Vercel (serverless)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
 
-    // Run migrations in background after server starts
-    console.log('Running database sync in background...');
-    exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Migration Error: ${error.message}`);
-        }
-        if (stderr) {
-            console.error(`Migration Stderr: ${stderr}`);
-        }
-        console.log(`Migration Stdout: ${stdout}`);
+        // Run migrations in background after server starts
+        console.log('Running database sync in background...');
+        exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Migration Error: ${error.message}`);
+            }
+            if (stderr) {
+                console.error(`Migration Stderr: ${stderr}`);
+            }
+            console.log(`Migration Stdout: ${stdout}`);
+        });
     });
-});
+}
+
+export default app;

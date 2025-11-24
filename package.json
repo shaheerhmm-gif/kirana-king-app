@@ -1,0 +1,16 @@
+{
+    "name": "kirana-king-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "client",
+        "server"
+    ],
+    "scripts": {
+        "install": "npm install",
+        "build": "echo 'Building...'"
+    },
+    "engines": {
+        "node": "20.x"
+    }
+}
