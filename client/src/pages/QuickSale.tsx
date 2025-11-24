@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff, ScanLine } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import { parseVoiceCommand } from '../utils/voiceParser';
 
 interface Product {
@@ -60,6 +61,9 @@ const QuickSale = () => {
     // Voice Recognition State
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
+
+    // Camera Scanner State
+    const [showCameraScanner, setShowCameraScanner] = useState(false);
 
     useEffect(() => {
         fetchProducts();
@@ -118,18 +122,23 @@ const QuickSale = () => {
         }
     };
 
-    // Barcode Scanner Integration
+    // Barcode Scanner Integration (for physical scanners)
     useBarcodeScanner({
         onScan: (barcode) => {
-            const product = products.find(p => p.barcode === barcode);
-            if (product) {
-                addToCart(product);
-                showToast(`Added ${product.name}`, 'success');
-            } else {
-                showToast(`Product not found: ${barcode}`, 'error');
-            }
+            handleBarcodeScanned(barcode);
         }
     });
+
+    // Handle barcode from any source (physical scanner or camera)
+    const handleBarcodeScanned = (barcode: string) => {
+        const product = products.find(p => p.barcode === barcode);
+        if (product) {
+            addToCart(product);
+            showToast(`Added ${product.name}`, 'success');
+        } else {
+            showToast(`Product not found: ${barcode}`, 'error');
+        }
+    };
 
     const fetchProducts = async () => {
         try {
@@ -395,6 +404,14 @@ const QuickSale = () => {
                                 autoFocus
                             />
                         </div>
+                        {/* Camera Scanner Button (Mobile) */}
+                        <button
+                            onClick={() => setShowCameraScanner(true)}
+                            className="md:hidden p-3 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-all"
+                            title="Scan Barcode with Camera"
+                        >
+                            <ScanLine size={24} />
+                        </button>
                         <button
                             onClick={toggleListening}
                             className={`p-3 rounded-lg transition-all ${isListening
@@ -758,6 +775,14 @@ const QuickSale = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Camera Scanner Modal */}
+            {showCameraScanner && (
+                <BarcodeScannerModal
+                    onScan={handleBarcodeScanned}
+                    onClose={() => setShowCameraScanner(false)}
+                />
             )}
         </OwnerLayout>
     );
