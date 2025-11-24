@@ -22,6 +22,7 @@ import Menu from './pages/Menu';
 import PurchaseSuggestions from './pages/PurchaseSuggestions';
 import PurchaseOrderList from './pages/PurchaseOrderList';
 import PurchaseOrderCreate from './pages/PurchaseOrderCreate';
+import OnlineStore from './pages/OnlineStore';
 import SupplierReturn from './pages/SupplierReturn';
 import Accounting from './pages/Accounting';
 import Reports from './pages/Reports';
@@ -213,6 +214,7 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
+      <Route path="/store/:storeId" element={<OnlineStore />} />
     </Routes>
   );
 };

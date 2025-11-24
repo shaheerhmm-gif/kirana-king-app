@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { logInventoryVoice, getExpiryAlerts, getLowStock, adjustStock, updateBatch, getProducts, createProduct, updateProduct, deleteProduct } from '../controllers/inventory.controller';
+import { logInventoryVoice, getExpiryAlerts, getLowStock, adjustStock, updateBatch, getProducts, createProduct, updateProduct, deleteProduct, getPublicProducts } from '../controllers/inventory.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -13,5 +13,7 @@ router.get('/products', authenticate, getProducts);
 router.post('/', authenticate, createProduct);
 router.put('/:id', authenticate, updateProduct);
 router.delete('/:id', authenticate, deleteProduct);
+
+router.get('/public/:storeId', getPublicProducts);
 
 export default router;

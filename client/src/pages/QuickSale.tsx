@@ -7,12 +7,15 @@ import { useToast } from '../context/ToastContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import LooseItemModal from '../components/LooseItemModal';
 import { parseVoiceCommand } from '../utils/voiceParser';
 
 interface Product {
     id: string;
     name: string;
     barcode?: string;
+    gstRate: number;
+    isSoldByWeight?: boolean;
     batches: any[];
 }
 
@@ -61,6 +64,10 @@ const QuickSale = () => {
     // Last Bill Preview
     const [lastBill, setLastBill] = useState<any>(null);
     const [showLastBillModal, setShowLastBillModal] = useState(false);
+
+    // Loose Item Modal
+    const [showLooseItemModal, setShowLooseItemModal] = useState(false);
+    const [selectedLooseProduct, setSelectedLooseProduct] = useState<Product | null>(null);
 
     // Voice Recognition State
     const [isListening, setIsListening] = useState(false);
@@ -195,7 +202,14 @@ const QuickSale = () => {
         }
     };
 
-    const addToCart = (product: Product, qtyToAdd: number = 1) => {
+    const addToCart = (product: Product, qtyToAdd: number = 1, overrideRate?: number) => {
+        // Check for loose item
+        if (product.isSoldByWeight && !overrideRate) {
+            setSelectedLooseProduct(product);
+            setShowLooseItemModal(true);
+            return;
+        }
+
         const existingItem = cart.find(item => item.id === product.id);
         const batch = product.batches?.find((b: any) => b.quantity > 0);
 
@@ -205,6 +219,13 @@ const QuickSale = () => {
         }
 
         if (existingItem) {
+            // For loose items, we just add the quantity (weight)
+            // Note: Validation for loose items stock might need to be float-based.
+            // Assuming batch.quantity is Int for now, which is a limitation if we track Kg.
+            // If batch.quantity is Int (e.g. 50 Kg), and we sell 0.5 Kg, we need to handle that.
+            // Ideally batch.quantity should be Float.
+            // For now, let's assume batch.quantity is strictly tracked for loose items or we skip strict check.
+
             if (existingItem.quantity + qtyToAdd > (batch.quantity || 0)) {
                 showToast('Insufficient stock', 'error');
                 return;
@@ -218,7 +239,7 @@ const QuickSale = () => {
             setCart([...cart, {
                 ...product,
                 quantity: qtyToAdd,
-                rate: batch.sellingPrice,
+                rate: overrideRate || batch.sellingPrice,
                 batchId: batch.id
             }]);
         }
@@ -336,7 +357,8 @@ const QuickSale = () => {
                     productId: item.id,
                     quantity: item.quantity,
                     rate: item.rate,
-                    batchId: item.batchId
+                    batchId: item.batchId,
+                    gstRate: item.gstRate
                 })),
                 customerId: selectedCustomer || undefined,
                 whatsappInvoice: whatsappEnabled,
@@ -607,7 +629,19 @@ const QuickSale = () => {
                             <div className="border-t pt-4 bg-white md:bg-transparent">
                                 <div className="flex justify-between text-2xl font-bold mb-4 text-gray-800">
                                     <span>Total</span>
-                                    <span>₹{totalAmount}</span>
+                                    <span>₹{totalAmount.toFixed(2)}</span>
+                                </div>
+
+                                {/* Tax Breakdown */}
+                                <div className="mb-4 text-xs text-gray-500 space-y-1 border-b pb-2">
+                                    <div className="flex justify-between">
+                                        <span>Taxable Amount</span>
+                                        <span>₹{(cart.reduce((sum, item) => sum + (item.rate * item.quantity * 100) / (100 + item.gstRate), 0)).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Total GST</span>
+                                        <span>₹{(cart.reduce((sum, item) => sum + (item.rate * item.quantity) - (item.rate * item.quantity * 100) / (100 + item.gstRate), 0)).toFixed(2)}</span>
+                                    </div>
                                 </div>
 
                                 {/* Payment Mode Selector */}
@@ -814,6 +848,31 @@ const QuickSale = () => {
                             </div>
                         </div>
                     </div>
+                )
+            }
+
+            {/* Loose Item Calculator Modal */}
+            {
+                showLooseItemModal && selectedLooseProduct && (
+                    <LooseItemModal
+                        product={{
+                            id: selectedLooseProduct.id,
+                            name: selectedLooseProduct.name,
+                            price: selectedLooseProduct.batches?.[0]?.sellingPrice || 0
+                        }}
+                        onConfirm={(quantity) => {
+                            // We add the item with the calculated quantity.
+                            // Rate is per unit (Kg), so totalAmount should match quantity * rate.
+                            // We pass the standard rate, and the quantity (which is weight in Kg).
+                            addToCart(selectedLooseProduct, quantity, selectedLooseProduct.batches?.[0]?.sellingPrice);
+                            setShowLooseItemModal(false);
+                            setSelectedLooseProduct(null);
+                        }}
+                        onClose={() => {
+                            setShowLooseItemModal(false);
+                            setSelectedLooseProduct(null);
+                        }}
+                    />
                 )
             }
 

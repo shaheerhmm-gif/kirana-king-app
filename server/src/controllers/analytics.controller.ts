@@ -225,9 +225,12 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
 
         sales.forEach(sale => {
             totalRevenue += sale.totalAmount;
-            sale.items.forEach(item => {
-                // Use latest batch purchase price as approximation
-                const purchasePrice = item.product.batches[0]?.purchasePrice || 0;
+            sale.items.forEach((item: any) => {
+                // Use stored purchase price if available (True Profit), else fallback to latest batch cost
+                const purchasePrice = item.purchasePrice > 0
+                    ? item.purchasePrice
+                    : (item.product.batches[0]?.purchasePrice || 0);
+
                 totalCOGS += (purchasePrice * item.quantity);
             });
         });
@@ -469,7 +472,11 @@ export const getItemWiseMargin = async (req: AuthRequest, res: Response) => {
 
         saleItems.forEach((item: any) => {
             const productId = item.productId;
-            const purchasePrice = item.product.batches[0]?.purchasePrice || 0;
+            // Use stored purchase price if available
+            const purchasePrice = item.purchasePrice > 0
+                ? item.purchasePrice
+                : (item.product.batches[0]?.purchasePrice || 0);
+
             const revenue = item.totalAmount || (item.rate * item.quantity);
             const cost = purchasePrice * item.quantity;
             const profit = revenue - cost;

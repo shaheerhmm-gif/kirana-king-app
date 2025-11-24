@@ -30,6 +30,47 @@ export const createSale = async (req: AuthRequest, res: Response) => {
             }
         }
 
+        // Pre-process items to fetch Purchase Price from Batches
+        const processedItems = await Promise.all(items.map(async (item: any) => {
+            let purchasePrice = 0;
+            if (item.batchId) {
+                const batch = await prisma.batch.findUnique({
+                    where: { id: item.batchId },
+                    select: { purchasePrice: true }
+                });
+                if (batch) purchasePrice = batch.purchasePrice;
+            } else {
+                // If no batch ID (e.g. loose item), try to find average purchase price or latest batch
+                const latestBatch = await prisma.batch.findFirst({
+                    where: { productId: item.productId },
+                    orderBy: { createdAt: 'desc' },
+                    select: { purchasePrice: true }
+                });
+                if (latestBatch) purchasePrice = latestBatch.purchasePrice;
+            }
+
+            const gstRate = item.gstRate || 0;
+            const rate = item.rate;
+            const quantity = item.quantity;
+            const taxableAmount = (rate * quantity) / (1 + gstRate / 100);
+            const taxAmount = (rate * quantity) - taxableAmount;
+            const cgst = taxAmount / 2;
+            const sgst = taxAmount / 2;
+            const igst = 0;
+
+            return {
+                productId: item.productId,
+                quantity: item.quantity,
+                rate: item.rate,
+                purchasePrice,
+                cgst,
+                sgst,
+                igst,
+                taxableAmount,
+                batchId: item.batchId // Keep for stock update
+            };
+        }));
+
         // Create sale with payment info
         const sale = await prisma.sale.create({
             data: {
@@ -39,33 +80,16 @@ export const createSale = async (req: AuthRequest, res: Response) => {
                 totalAmount,
                 paymentMode,
                 items: {
-                    create: items.map((item: any) => {
-                        // Calculate GST if applicable
-                        // Assuming item.gstRate is provided or fetched. 
-                        // For MVP, we trust the frontend or fetch product details here.
-                        // Let's rely on frontend passing gstRate for speed, but ideally fetch.
-                        const gstRate = item.gstRate || 0;
-                        const rate = item.rate;
-                        const quantity = item.quantity;
-                        const taxableAmount = (rate * quantity) / (1 + gstRate / 100);
-                        const taxAmount = (rate * quantity) - taxableAmount;
-
-                        // Simple logic: Split 50-50 for CGST/SGST if local, else IGST
-                        // For now, assume local (CGST+SGST)
-                        const cgst = taxAmount / 2;
-                        const sgst = taxAmount / 2;
-                        const igst = 0;
-
-                        return {
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            rate: item.rate,
-                            cgst,
-                            sgst,
-                            igst,
-                            taxableAmount
-                        };
-                    })
+                    create: processedItems.map((item: any) => ({
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        rate: item.rate,
+                        purchasePrice: item.purchasePrice,
+                        cgst: item.cgst,
+                        sgst: item.sgst,
+                        igst: item.igst,
+                        taxableAmount: item.taxableAmount
+                    }))
                 },
                 // Create split payment records if applicable
                 ...(paymentMode === 'SPLIT' && payments && {

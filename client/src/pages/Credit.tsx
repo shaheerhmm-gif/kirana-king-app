@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
 import api from '../api';
-import { DollarSign, Plus } from 'lucide-react';
+import { DollarSign, Plus, MessageCircle } from 'lucide-react';
 import TrustBadge from '../components/TrustBadge';
 import CustomerForm from '../components/CustomerForm';
 
@@ -22,9 +22,21 @@ const Credit = () => {
     const [trustData, setTrustData] = useState<any>(null);
     const [showCustomerForm, setShowCustomerForm] = useState(false);
 
+    const [upiId, setUpiId] = useState('');
+
     useEffect(() => {
         fetchCustomers();
+        fetchStoreProfile();
     }, []);
+
+    const fetchStoreProfile = async () => {
+        try {
+            const res = await api.get('/store/profile');
+            setUpiId(res.data.upiId || '');
+        } catch (error) {
+            console.error('Failed to fetch store profile', error);
+        }
+    };
 
     useEffect(() => {
         if (selectedCustomer) {
@@ -50,6 +62,30 @@ const Credit = () => {
         } catch (error) {
             console.error(error);
         }
+    };
+
+    const handleWhatsAppReminder = () => {
+        if (!selectedCustomer || !trustData) return;
+
+        const customer = customers.find(c => c.id === selectedCustomer);
+        if (!customer) return;
+
+        const balance = trustData.balance;
+        if (balance <= 0) {
+            alert('Customer has no pending balance!');
+            return;
+        }
+
+        let message = `Namaste ${customer.name}! Your pending balance at our store is ₹${balance}.`;
+
+        if (upiId) {
+            message += ` Please pay via UPI: ${upiId}`;
+        }
+
+        message += ` Thank you!`;
+
+        const url = `https://wa.me/91${customer.phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     };
 
     const handleTransaction = async (e: React.FormEvent) => {
@@ -130,10 +166,20 @@ const Credit = () => {
                                     <span className="text-sm text-gray-500">Trust Score</span>
                                     <TrustBadge score={trustData.score} status={trustData.status} />
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-sm mb-3">
                                     <span>Balance: <strong>₹{trustData.balance}</strong></span>
                                     <span>Limit: ₹{trustData.creditLimit}</span>
                                 </div>
+                                {trustData.balance > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleWhatsAppReminder}
+                                        className="w-full py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center justify-center gap-2 font-medium transition-colors"
+                                    >
+                                        <MessageCircle size={18} />
+                                        Send Payment Reminder
+                                    </button>
+                                )}
                             </div>
                         )}
 

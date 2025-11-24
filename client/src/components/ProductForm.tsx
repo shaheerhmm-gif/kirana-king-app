@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Scan } from 'lucide-react';
+import { X, Save, Globe, Loader } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import { fetchProductByBarcode } from '../services/openFoodFacts';
 
 interface ProductFormProps {
     onClose: () => void;
@@ -12,6 +13,7 @@ interface ProductFormProps {
 const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialData }) => {
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [isLookingUp, setIsLookingUp] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         barcode: '',
@@ -21,6 +23,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
         sellingPrice: '',
         stock: '',
         unit: 'Pcs', // Default
+        gstRate: '0',
         expiryDate: '',
         isSoldByWeight: false
     });
@@ -39,6 +42,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
                 sellingPrice: initialData.batches?.[0]?.sellingPrice?.toString() || '',
                 stock: initialData.totalStock?.toString() || '',
                 unit: initialData.isSoldByWeight ? 'Kg' : 'Pcs',
+                gstRate: initialData.gstRate?.toString() || '0',
                 expiryDate: initialData.batches?.[0]?.expiryDate ? new Date(initialData.batches[0].expiryDate).toISOString().split('T')[0] : '',
                 isSoldByWeight: initialData.isSoldByWeight || false
             });
@@ -60,6 +64,33 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
         }
     };
 
+    const handleGlobalLookup = async () => {
+        if (!formData.barcode) {
+            showToast('Please enter a barcode first', 'error');
+            return;
+        }
+
+        setIsLookingUp(true);
+        try {
+            const product = await fetchProductByBarcode(formData.barcode);
+            if (product) {
+                setFormData(prev => ({
+                    ...prev,
+                    name: product.name || prev.name,
+                    category: product.category || prev.category,
+                    supplierName: product.brand || prev.supplierName
+                }));
+                showToast('Product found in global database!', 'success');
+            } else {
+                showToast('Product not found in global database', 'info');
+            }
+        } catch (error) {
+            showToast('Failed to lookup product', 'error');
+        } finally {
+            setIsLookingUp(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -70,6 +101,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
                 costPrice: parseFloat(formData.costPrice) || 0,
                 sellingPrice: parseFloat(formData.sellingPrice) || 0,
                 stock: parseInt(formData.stock) || 0,
+                gstRate: parseFloat(formData.gstRate) || 0,
                 isSoldByWeight: formData.unit === 'Kg' || formData.unit === 'L' // Simple logic for now
             };
 
@@ -127,8 +159,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
                                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                                     placeholder="Scan or type..."
                                 />
-                                <button type="button" className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
-                                    <Scan size={20} className="text-gray-600" />
+                                <button
+                                    type="button"
+                                    onClick={handleGlobalLookup}
+                                    disabled={isLookingUp}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 disabled:opacity-50"
+                                    title="Search Global Database"
+                                >
+                                    {isLookingUp ? <Loader size={20} className="animate-spin" /> : <Globe size={20} />}
                                 </button>
                             </div>
                         </div>
@@ -220,6 +258,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
                                 <option value="L">L</option>
                                 <option value="Pack">Pack</option>
                                 <option value="Box">Box</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate (%)</label>
+                            <select
+                                name="gstRate"
+                                value={formData.gstRate}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="0">0% (Exempt)</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
                             </select>
                         </div>
                     </div>

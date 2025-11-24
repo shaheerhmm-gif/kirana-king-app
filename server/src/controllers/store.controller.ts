@@ -17,15 +17,17 @@ export const getStoreProfile = async (req: AuthRequest, res: Response) => {
 
 export const updateStoreProfile = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, location } = req.body;
+        const { name, location, upiId } = req.body;
         const storeId = req.user!.storeId;
 
+        // Update store profile including UPI ID
         const store = await prisma.store.update({
             where: { id: storeId },
             data: {
                 name,
-                location
-            }
+                location,
+                upiId
+            } as any
         });
 
         res.json({ message: 'Store profile updated successfully', store });

@@ -160,6 +160,16 @@ const OwnerDashboard = () => {
                             <Link to="/purchase/orders" className="block w-full bg-white/20 hover:bg-white/30 transition-colors py-2 px-4 rounded-lg text-sm font-medium text-center backdrop-blur-sm">
                                 Order Stock
                             </Link>
+                            <button
+                                onClick={() => {
+                                    const url = `${window.location.origin}/store/${user?.storeId}`;
+                                    const text = `🛒 Order online from *${user?.name || 'Kirana King'}*!\n\nClick here: ${url}`;
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                }}
+                                className="block w-full bg-white text-indigo-700 hover:bg-gray-100 transition-colors py-2 px-4 rounded-lg text-sm font-bold text-center shadow-sm"
+                            >
+                                🔗 Share Store Link
+                            </button>
                         </div>
                     </motion.div>
                 </div>

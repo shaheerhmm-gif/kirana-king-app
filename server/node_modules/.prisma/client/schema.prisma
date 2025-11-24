@@ -84,6 +84,7 @@ model Store {
   id            String         @id @default(uuid())
   name          String
   location      String?
+  upiId         String?
   users         User[]
   products      Product[]
   suppliers     Supplier[]
@@ -317,6 +318,7 @@ model SaleItem {
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
   rate      Float
+  purchasePrice Float @default(0)
   cgst      Float    @default(0)
   sgst      Float    @default(0)
   igst      Float    @default(0)

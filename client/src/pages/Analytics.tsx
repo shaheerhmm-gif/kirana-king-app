@@ -9,6 +9,7 @@ const Analytics = () => {
     const [topItems, setTopItems] = useState<any[]>([]);
     const [salesData, setSalesData] = useState<any>(null);
     const [profitData, setProfitData] = useState<any>(null);
+    const [itemMargins, setItemMargins] = useState<any[]>([]);
     const [churnData, setChurnData] = useState<any[]>([]);
     const [dateRange, setDateRange] = useState({
         startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
@@ -49,8 +50,12 @@ const Analytics = () => {
 
     const fetchProfitData = async () => {
         try {
-            const res = await api.get(`/analytics/profit-loss?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`);
-            setProfitData(res.data);
+            const [profitRes, marginRes] = await Promise.all([
+                api.get(`/analytics/profit-loss?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`),
+                api.get(`/analytics/item-margin?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)
+            ]);
+            setProfitData(profitRes.data);
+            setItemMargins(marginRes.data.slice(0, 10)); // Top 10
         } catch (error) {
             console.error(error);
         }
@@ -293,6 +298,39 @@ const Analytics = () => {
                                             ? " This is slightly low. Consider reviewing your pricing strategy or negotiating better rates with suppliers."
                                             : " This is a healthy margin for a retail business. Keep it up!"}
                                     </p>
+                                </div>
+
+                                {/* Top Profitable Items */}
+                                <div>
+                                    <h3 className="font-bold text-gray-800 mb-4">🏆 Top Profitable Items</h3>
+                                    <div className="overflow-x-auto border rounded-lg bg-white">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sold</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {itemMargins.map((item, idx) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.productName}</td>
+                                                        <td className="px-6 py-4 text-sm text-right text-gray-500">{item.quantitySold}</td>
+                                                        <td className="px-6 py-4 text-sm text-right text-gray-900">₹{item.revenue.toLocaleString()}</td>
+                                                        <td className="px-6 py-4 text-sm text-right font-bold text-green-600">₹{item.profit.toLocaleString()}</td>
+                                                        <td className="px-6 py-4 text-sm text-right">
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${item.margin > 20 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                {item.margin.toFixed(1)}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         )}

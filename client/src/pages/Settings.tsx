@@ -10,7 +10,8 @@ const Settings = () => {
     const { showToast } = useToast();
     const [formData, setFormData] = useState({
         name: '',
-        location: ''
+        location: '',
+        upiId: ''
     });
 
     useEffect(() => {
@@ -22,7 +23,8 @@ const Settings = () => {
             const res = await api.get('/store/profile');
             setFormData({
                 name: res.data.name || '',
-                location: res.data.location || ''
+                location: res.data.location || '',
+                upiId: res.data.upiId || ''
             });
         } catch (error) {
             console.error(error);
@@ -81,6 +83,18 @@ const Settings = () => {
                                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                                 placeholder="e.g. Kirana King"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID (for Payments)</label>
+                            <input
+                                type="text"
+                                value={formData.upiId}
+                                onChange={e => setFormData({ ...formData, upiId: e.target.value })}
+                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                placeholder="e.g. 9876543210@upi"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Used for generating payment links in WhatsApp reminders.</p>
                         </div>
 
                         <div>

@@ -409,3 +409,44 @@ export const deleteProduct = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error deleting product' });
     }
 };
+
+export const getPublicProducts = async (req: Request, res: Response) => {
+    try {
+        const { storeId } = req.params;
+
+        // Fetch store details including UPI ID
+        const store = await prisma.store.findUnique({
+            where: { id: storeId },
+            select: { name: true, location: true, upiId: true } as any
+        });
+
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        const products = await prisma.product.findMany({
+            where: { storeId },
+            include: {
+                batches: {
+                    where: { quantity: { gt: 0 } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
+                }
+            }
+        });
+
+        const publicProducts = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            price: p.batches[0]?.sellingPrice || 0,
+            isSoldByWeight: p.isSoldByWeight,
+            stock: p.batches.reduce((sum, b) => sum + b.quantity, 0)
+        })).filter(p => p.stock > 0);
+
+        res.json({ store, products: publicProducts });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching public products' });
+    }
+};
