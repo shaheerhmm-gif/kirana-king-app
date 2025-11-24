@@ -49,46 +49,55 @@ const Invoices = () => {
                     <div className="bg-white p-6 rounded-lg shadow">
                         <h2 className="text-lg font-semibold mb-4">Scan Results</h2>
 
-                        <div className="mb-4">
-                            <p className="text-sm text-gray-500">Supplier</p>
-                            <p className="font-bold">{result.data.supplierName}</p>
-                        </div>
-
-                        <div className="mb-4">
-                            <p className="text-sm text-gray-500">Total Amount</p>
-                            <p className="font-bold text-xl">₹{result.data.totalAmount}</p>
-                        </div>
-
-                        {result.alerts.length > 0 ? (
-                            <div className="bg-red-50 border border-red-200 rounded p-4 mb-4">
-                                <h3 className="text-red-800 font-bold flex items-center gap-2">
-                                    <AlertOctagon size={18} />
-                                    Watchdog Alerts
-                                </h3>
-                                <ul className="list-disc list-inside text-red-700 mt-2 text-sm">
-                                    {result.alerts.map((alert: string, idx: number) => (
-                                        <li key={idx}>{alert}</li>
-                                    ))}
-                                </ul>
+                        {(!result.data.supplierName && result.data.items.length === 0) ? (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4 text-yellow-800">
+                                <p className="font-bold">Scan Incomplete</p>
+                                <p className="text-sm">Could not extract data automatically. Please enter details manually below.</p>
                             </div>
                         ) : (
-                            <div className="bg-green-50 border border-green-200 rounded p-4 mb-4 flex items-center gap-2 text-green-800">
-                                <CheckCircle size={18} />
-                                No issues detected. Prices match history.
-                            </div>
-                        )}
+                            <>
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-500">Supplier</p>
+                                    <p className="font-bold">{result.data.supplierName || 'Unknown'}</p>
+                                </div>
 
-                        <div>
-                            <h3 className="font-semibold mb-2">Items Logged</h3>
-                            <ul className="space-y-2">
-                                {result.data.items.map((item: any, idx: number) => (
-                                    <li key={idx} className="flex justify-between text-sm border-b pb-1">
-                                        <span>{item.name} (x{item.quantity})</span>
-                                        <span>₹{item.rate}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-500">Total Amount</p>
+                                    <p className="font-bold text-xl">₹{result.data.totalAmount}</p>
+                                </div>
+
+                                {result.alerts.length > 0 ? (
+                                    <div className="bg-red-50 border border-red-200 rounded p-4 mb-4">
+                                        <h3 className="text-red-800 font-bold flex items-center gap-2">
+                                            <AlertOctagon size={18} />
+                                            Watchdog Alerts
+                                        </h3>
+                                        <ul className="list-disc list-inside text-red-700 mt-2 text-sm">
+                                            {result.alerts.map((alert: string, idx: number) => (
+                                                <li key={idx}>{alert}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <div className="bg-green-50 border border-green-200 rounded p-4 mb-4 flex items-center gap-2 text-green-800">
+                                        <CheckCircle size={18} />
+                                        No issues detected. Prices match history.
+                                    </div>
+                                )}
+
+                                <div>
+                                    <h3 className="font-semibold mb-2">Items Logged</h3>
+                                    <ul className="space-y-2">
+                                        {result.data.items.map((item: any, idx: number) => (
+                                            <li key={idx} className="flex justify-between text-sm border-b pb-1">
+                                                <span>{item.name} (x{item.quantity})</span>
+                                                <span>₹{item.rate}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

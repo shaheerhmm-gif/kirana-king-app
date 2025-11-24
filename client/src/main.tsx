@@ -5,11 +5,14 @@ import './i18n'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import { registerServiceWorker } from './sw-registration'
+import { ThemeProvider } from './context/ThemeContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

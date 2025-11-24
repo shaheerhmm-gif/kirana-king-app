@@ -1,173 +1,231 @@
 import { useEffect, useState } from 'react';
-import MobileLayout from '../components/MobileLayout';
+import { useAuth } from '../context/AuthContext';
+import OwnerLayout from '../components/OwnerLayout';
+import { TrendingUp, AlertTriangle, Package } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../api';
-import { AlertTriangle, TrendingDown, Clock, Moon, Package, TrendingUp } from 'lucide-react';
-import DailySalesSummary from '../components/DailySalesSummary';
-import NightCloseModal from '../components/NightCloseModal';
+import { useTranslation } from 'react-i18next';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 
-import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../components/LanguageSwitcher';
-
 const OwnerDashboard = () => {
+    const { user } = useAuth();
     const { t } = useTranslation();
-    const [expiryAlerts, setExpiryAlerts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showNightClose, setShowNightClose] = useState(false);
+    const [stats, setStats] = useState({
+        totalSales: 0,
+        lowStockCount: 0,
+        expiringSoonCount: 0,
+        todaysSales: 0
+    });
+    const [salesData, setSalesData] = useState<any[]>([]);
+    const [topItems, setTopItems] = useState<any[]>([]);
+    const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await api.get('/inventory/expiry-alerts');
-                setExpiryAlerts(res.data);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+        fetchDashboardData();
+        setGreeting(getGreeting());
     }, []);
 
-    const redAlerts = expiryAlerts.filter((a) => a.status === 'RED');
-    const amberAlerts = expiryAlerts.filter((a) => a.status === 'AMBER');
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    const fetchDashboardData = async () => {
+        try {
+            const [expiryRes, salesRes, topRes] = await Promise.all([
+                api.get('/inventory/expiry-alerts'),
+                api.get(`/analytics/daily-sales?startDate=${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()}&endDate=${new Date().toISOString()}`),
+                api.get('/analytics/top-items')
+            ]);
+
+            const today = new Date().toISOString().split('T')[0];
+            const todaysSales = salesRes.data.sales
+                .filter((s: any) => s.createdAt.startsWith(today))
+                .reduce((sum: number, s: any) => sum + s.totalAmount, 0);
+
+            setStats({
+                totalSales: salesRes.data.summary.totalSales,
+                lowStockCount: 0, // TODO: Add endpoint
+                expiringSoonCount: expiryRes.data.expiringSoon.length + expiryRes.data.expired.length,
+                todaysSales
+            });
+
+            // Process sales data for chart
+            const chartData = salesRes.data.sales.reduce((acc: any[], sale: any) => {
+                const date = new Date(sale.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
+                const existing = acc.find(d => d.name === date);
+                if (existing) {
+                    existing.sales += sale.totalAmount;
+                } else {
+                    acc.push({ name: date, sales: sale.totalAmount });
+                }
+                return acc;
+            }, []).slice(-7); // Last 7 days
+
+            setSalesData(chartData);
+            setTopItems(topRes.data.slice(0, 5));
+
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: { y: 0, opacity: 1 }
+    };
 
     return (
-        <MobileLayout>
-            <div className="p-6 space-y-6">
-                {/* Header */}
+        <OwnerLayout>
+            <motion.div
+                className="space-y-6"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
+                {/* Header Section */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl font-bold text-secondary-dark">{t('dashboard.morning_briefing')}</h1>
-                        <p className="text-sm text-secondary">{t('dashboard.whats_happening')}</p>
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                            {greeting}, {user?.name || 'Owner'}! 👋
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.welcome')}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <LanguageSwitcher />
-                        <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowNightClose(true)}
-                            className="bg-secondary-dark text-white p-3 rounded-full shadow-lg shadow-secondary-dark/20"
-                        >
-                            <Moon size={20} />
-                        </motion.button>
-                    </div>
-                </div>
-
-                {/* Sales Summary Card */}
-                <DailySalesSummary />
-
-                {/* Quick Stats Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="bg-white p-4 rounded-2xl shadow-card border border-gray-50"
-                    >
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 bg-red-50 text-red-500 rounded-lg">
-                                <AlertTriangle size={18} />
-                            </div>
-                            <span className="text-xs font-medium text-secondary">Critical</span>
-                        </div>
-                        <h3 className="text-2xl font-bold text-secondary-dark">{redAlerts.length}</h3>
-                        <p className="text-[10px] text-red-500 font-medium">{t('dashboard.expiring_soon')}</p>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white p-4 rounded-2xl shadow-card border border-gray-50"
-                    >
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 bg-amber-50 text-amber-500 rounded-lg">
-                                <Clock size={18} />
-                            </div>
-                            <span className="text-xs font-medium text-secondary">Warning</span>
-                        </div>
-                        <h3 className="text-2xl font-bold text-secondary-dark">{amberAlerts.length}</h3>
-                        <p className="text-[10px] text-amber-500 font-medium">{t('dashboard.expiring_week')}</p>
-                    </motion.div>
-                </div>
-
-                {/* Dead Stock Banner */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 p-5 rounded-2xl shadow-lg shadow-blue-500/20 text-white relative overflow-hidden"
-                >
-                    <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-
-                    <div className="flex justify-between items-start relative z-10">
-                        <div>
-                            <p className="text-blue-100 text-xs font-medium mb-1">{t('dashboard.inventory_health')}</p>
-                            <h3 className="text-lg font-bold">{t('dashboard.check_dead_stock')}</h3>
-                            <p className="text-xs text-blue-100 mt-1">{t('dashboard.dead_stock_desc')}</p>
-                        </div>
-                        <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                            <TrendingDown size={20} />
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Action Items List */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-secondary-dark">{t('dashboard.action_items')}</h2>
-                        <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-full">
-                            {redAlerts.length} {t('dashboard.pending')}
+                    <div className="hidden md:block">
+                        <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-4 py-2 rounded-full text-sm font-medium">
+                            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </span>
                     </div>
+                </div>
 
-                    {loading ? (
-                        <div className="space-y-3">
-                            {[1, 2].map((i) => (
-                                <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />
-                            ))}
-                        </div>
-                    ) : redAlerts.length === 0 ? (
-                        <div className="bg-green-50 border border-green-100 rounded-2xl p-6 text-center">
-                            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Today's Sales</p>
+                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mt-1">₹{stats.todaysSales.toLocaleString()}</h3>
+                            </div>
+                            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl text-green-600 dark:text-green-400">
                                 <TrendingUp size={24} />
                             </div>
-                            <p className="text-green-800 font-medium">{t('dashboard.all_clear')}</p>
-                            <p className="text-green-600 text-xs mt-1">{t('dashboard.no_critical_alerts')}</p>
                         </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {redAlerts.map((alert, idx) => (
-                                <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.1 }}
-                                    className="bg-white p-4 rounded-2xl shadow-card border border-gray-50 flex items-center justify-between"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shrink-0">
-                                            <Package size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-secondary-dark text-sm">{alert.productName}</p>
-                                            <p className="text-xs text-red-500 font-medium">
-                                                {t('dashboard.expires')} {new Date(alert.expiryDate).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button className="text-xs font-bold text-primary bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors">
-                                        {t('dashboard.discount')}
-                                    </button>
-                                </motion.div>
-                            ))}
+                        <div className="mt-4 flex items-center text-sm text-green-600 dark:text-green-400">
+                            <TrendingUp size={16} className="mr-1" />
+                            <span>+12% from yesterday</span>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </motion.div>
 
-            <NightCloseModal isOpen={showNightClose} onClose={() => setShowNightClose(false)} />
-        </MobileLayout>
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Revenue</p>
+                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mt-1">₹{stats.totalSales.toLocaleString()}</h3>
+                            </div>
+                            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
+                                <Package size={24} />
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Critical Expiry</p>
+                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.expiringSoonCount}</h3>
+                            </div>
+                            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl text-red-600 dark:text-red-400">
+                                <AlertTriangle size={24} />
+                            </div>
+                        </div>
+                        <Link to="/owner/expiry" className="mt-4 inline-block text-sm text-red-600 dark:text-red-400 hover:underline">
+                            View Details &rarr;
+                        </Link>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg">
+                        <h3 className="font-bold text-lg mb-2">Quick Actions</h3>
+                        <div className="space-y-2">
+                            <Link to="/owner/quick-sale" className="block w-full bg-white/20 hover:bg-white/30 transition-colors py-2 px-4 rounded-lg text-sm font-medium text-center backdrop-blur-sm">
+                                New Sale (POS)
+                            </Link>
+                            <Link to="/purchase/orders" className="block w-full bg-white/20 hover:bg-white/30 transition-colors py-2 px-4 rounded-lg text-sm font-medium text-center backdrop-blur-sm">
+                                Order Stock
+                            </Link>
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* Charts & Insights Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Sales Chart */}
+                    <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Sales Trend (Last 7 Days)</h3>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={salesData}>
+                                    <defs>
+                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
+
+                    {/* Top Movers & Dead Stock */}
+                    <div className="space-y-6">
+                        <motion.div variants={itemVariants} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Top Movers 🚀</h3>
+                            <div className="space-y-4">
+                                {topItems.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">{item.name}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{item.soldQuantity} sold</p>
+                                            </div>
+                                        </div>
+                                        <span className="font-bold text-indigo-600 dark:text-indigo-400 text-sm">₹{item.price}</span>
+                                    </div>
+                                ))}
+                                {topItems.length === 0 && <p className="text-gray-400 text-sm">No sales data yet.</p>}
+                            </div>
+                        </motion.div>
+
+                        <motion.div variants={itemVariants} className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 p-6 rounded-2xl">
+                            <h3 className="text-lg font-bold text-orange-800 dark:text-orange-300 mb-2">Dead Stock Alert ⚠️</h3>
+                            <p className="text-sm text-orange-700 dark:text-orange-400 mb-4">
+                                You have items that haven't sold in 60+ days. Clear them out to free up cash!
+                            </p>
+                            <Link to="/owner/analytics" className="w-full block text-center bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400 py-2 rounded-lg font-bold text-sm shadow-sm hover:shadow-md transition-shadow">
+                                View Inventory Insight
+                            </Link>
+                        </motion.div>
+                    </div>
+                </div>
+            </motion.div>
+        </OwnerLayout>
     );
 };
 

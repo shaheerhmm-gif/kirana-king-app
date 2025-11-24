@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDeadStock, getTopItems, getDailySales, getProfitLoss, getSalesAnalytics, getStockValuation, getGSTRegister, getSlowMovingItems, getItemWiseMargin } from '../controllers/analytics.controller';
+import { getDeadStock, getTopItems, getDailySales, getProfitLoss, getSalesAnalytics, getStockValuation, getGSTRegister, getSlowMovingItems, getItemWiseMargin, getCustomerChurn } from '../controllers/analytics.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -13,5 +13,6 @@ router.get('/stock-valuation', authenticate, getStockValuation);
 router.get('/gst-register', authenticate, getGSTRegister);
 router.get('/slow-moving', authenticate, getSlowMovingItems);
 router.get('/item-margin', authenticate, getItemWiseMargin);
+router.get('/churn', authenticate, getCustomerChurn);
 
 export default router;

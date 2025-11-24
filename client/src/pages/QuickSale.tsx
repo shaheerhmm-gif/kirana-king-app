@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+
 import OwnerLayout from '../components/OwnerLayout';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff, ScanLine } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Send, X, Pause, Play, AlertCircle, CreditCard, Smartphone, Banknote, Mic, MicOff, Share2 } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import SplitPaymentModal from '../components/SplitPaymentModal';
-import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import { parseVoiceCommand } from '../utils/voiceParser';
 
 interface Product {
@@ -57,15 +56,17 @@ const QuickSale = () => {
     const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD' | 'CREDIT' | 'SPLIT'>('CASH');
     const [showSplitPaymentModal, setShowSplitPaymentModal] = useState(false);
     const [splitPayments, setSplitPayments] = useState<any[]>([]);
-    const [billFormat, setBillFormat] = useState('THERMAL_58MM');
+
+
+    // Last Bill Preview
+    const [lastBill, setLastBill] = useState<any>(null);
+    const [showLastBillModal, setShowLastBillModal] = useState(false);
 
     // Voice Recognition State
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
 
-    // Camera Scanner State
-    const [showCameraScanner, setShowCameraScanner] = useState(false);
-    const location = useLocation();
+
     const [customerDetails, setCustomerDetails] = useState<any>(null);
 
     useEffect(() => {
@@ -85,12 +86,7 @@ const QuickSale = () => {
         }
     };
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        if (params.get('scan') === 'true') {
-            setShowCameraScanner(true);
-        }
-    }, [location]);
+
 
     useEffect(() => {
         fetchProducts();
@@ -121,7 +117,7 @@ const QuickSale = () => {
                 setIsListening(false);
             };
         }
-    }, [products]); // Re-bind if products change (for closure access if needed, though we pass products to parser)
+    }, []);
 
     const handleVoiceCommand = (transcript: string) => {
         console.log('Voice Command:', transcript);
@@ -284,17 +280,9 @@ const QuickSale = () => {
 
     const resumeParkedBill = async (bill: ParkedBill) => {
         try {
-            // Restore items to cart (needs mapping back to products)
-            // For simplicity, we'll just delete the parked bill and let user re-add items
-            // In a real app, we'd map these back to product objects
-
-            // Actually, let's try to map them if possible, or just use the parked data
-            // Since we need batch info which might not be in parked bill, 
-            // we'll fetch the full bill details first
             const res = await api.get(`/parked/${bill.id}`);
             const fullBill = res.data;
 
-            // Map items back to cart format
             const restoredCart: CartItem[] = [];
             for (const item of fullBill.items) {
                 const product = products.find(p => p.id === item.productId);
@@ -304,7 +292,7 @@ const QuickSale = () => {
                         ...product,
                         quantity: item.quantity,
                         rate: item.rate,
-                        batchId: batch?.id // Best effort assignment
+                        batchId: batch?.id
                     });
                 }
             }
@@ -312,7 +300,6 @@ const QuickSale = () => {
             setCart(restoredCart);
             if (fullBill.customerId) setSelectedCustomer(fullBill.customerId);
 
-            // Delete from parked
             await api.delete(`/parked/${bill.id}`);
             fetchParkedBills();
             setShowParkedBills(false);
@@ -337,7 +324,6 @@ const QuickSale = () => {
     const handleSale = async () => {
         if (cart.length === 0) return;
 
-        // If split payment selected but not configured, show modal
         if (paymentMode === 'SPLIT' && splitPayments.length === 0) {
             setShowSplitPaymentModal(true);
             return;
@@ -358,8 +344,31 @@ const QuickSale = () => {
                 payments: paymentMode === 'SPLIT' ? splitPayments : undefined
             };
 
-            await api.post('/sales', saleData);
+            const res = await api.post('/sales', saleData);
+            const sale = res.data;
+
             showToast('Sale completed successfully!', 'success');
+
+            // Handle WhatsApp
+            if (whatsappEnabled) {
+                const customer = customers.find(c => c.id === selectedCustomer);
+                const phone = customer?.phone || ''; // Or ask for phone if walk-in? For now, only registered.
+
+                if (phone) {
+                    const text = `*Kirana King Invoice*\n\nDate: ${new Date().toLocaleDateString()}\nAmount: ₹${sale.totalAmount}\n\nItems:\n${cart.map(i => `${i.name} x${i.quantity} - ₹${i.rate * i.quantity}`).join('\n')}\n\nThank you for shopping with us!`;
+                    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                } else if (whatsappEnabled && !selectedCustomer) {
+                    // Prompt for phone number for walk-in?
+                    // For MVP speed, we'll just skip or maybe show a toast "No phone number"
+                    // Or open generic share
+                    // showToast('No customer phone for WhatsApp', 'info');
+                }
+            }
+
+            setLastBill({ ...sale, items: cart }); // Store for preview
+            setShowLastBillModal(true);
+
             clearCart();
             fetchProducts(); // Refresh inventory
         } catch (error: any) {
@@ -372,15 +381,16 @@ const QuickSale = () => {
 
     // Keyboard shortcuts
     useKeyboardShortcuts({
-        'F2': () => clearCart(), // New bill
-        'F3': () => parkBill(), // Park bill
-        'F4': () => setShowParkedBills(true), // Show parked bills
-        'F12': () => handleSale(), // Complete sale
+        'F1': () => document.getElementById('search-input')?.focus(), // Search
+        'F2': () => handleSale(), // Pay (Tender)
+        'F3': () => parkBill(), // Park
+        'F4': () => setShowParkedBills(prev => !prev), // Toggle Parked List
         'Escape': () => {
             setShowCartMobile(false);
             setShowParkedBills(false);
             setShowShortcutsHelp(false);
             setShowSplitPaymentModal(false);
+            setShowLastBillModal(false);
         },
         '?': () => setShowShortcutsHelp(true),
         'Ctrl+f': () => document.getElementById('search-input')?.focus(),
@@ -408,13 +418,13 @@ const QuickSale = () => {
                                     className="px-4 py-2 bg-amber-100 text-amber-700 rounded-lg font-medium hover:bg-amber-200 flex items-center gap-2"
                                 >
                                     <Pause size={18} />
-                                    Parked ({parkedBills.length})
+                                    Parked ({parkedBills.length}) (F4)
                                 </button>
                             )}
                             <button
                                 onClick={() => setShowShortcutsHelp(true)}
                                 className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                                title="Keyboard Shortcuts"
+                                title="Keyboard Shortcuts (?)"
                             >
                                 ⌨️
                             </button>
@@ -430,19 +440,11 @@ const QuickSale = () => {
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search by name or scan barcode... (Ctrl+F)"
+                                placeholder="Search by name or scan barcode... (F1)"
                                 className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                 autoFocus
                             />
                         </div>
-                        {/* Camera Scanner Button (Mobile) */}
-                        <button
-                            onClick={() => setShowCameraScanner(true)}
-                            className="md:hidden p-3 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-all"
-                            title="Scan Barcode with Camera"
-                        >
-                            <ScanLine size={24} />
-                        </button>
                         <button
                             onClick={toggleListening}
                             className={`p-3 rounded-lg transition-all ${isListening
@@ -647,25 +649,6 @@ const QuickSale = () => {
                                     </button>
                                 </div>
 
-                                {/* Bill Format Selector */}
-                                <div className="mb-4">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Bill Format</label>
-                                    <div className="flex gap-2">
-                                        {['THERMAL_58MM', 'THERMAL_80MM', 'A4_SIMPLE'].map((format) => (
-                                            <button
-                                                key={format}
-                                                onClick={() => setBillFormat(format)}
-                                                className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${billFormat === format
-                                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
-                                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                                    }`}
-                                            >
-                                                {format.replace('_', ' ')}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
                                 <div className="flex items-center gap-3 mb-4 bg-green-50 p-3 rounded-lg border border-green-100">
                                     <input
                                         type="checkbox"
@@ -684,7 +667,7 @@ const QuickSale = () => {
                                         onClick={clearCart}
                                         disabled={cart.length === 0}
                                         className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 disabled:opacity-50"
-                                        title="New Bill (F2)"
+                                        title="New Bill (Esc)"
                                     >
                                         Clear
                                     </button>
@@ -692,7 +675,7 @@ const QuickSale = () => {
                                         onClick={handleSale}
                                         disabled={submitting || cart.length === 0}
                                         className="flex-[2] bg-indigo-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-indigo-700 disabled:bg-gray-400 flex justify-center items-center gap-2 shadow-lg active:scale-95 transition-transform"
-                                        title="Complete Sale (F12)"
+                                        title="Complete Sale (F2)"
                                     >
                                         {submitting ? 'Processing...' : (
                                             <>
@@ -791,6 +774,49 @@ const QuickSale = () => {
                 )
             }
 
+            {/* Last Bill Preview Modal */}
+            {
+                showLastBillModal && lastBill && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]" onClick={() => setShowLastBillModal(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                            <div className="p-6 text-center">
+                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Share2 size={32} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">Sale Completed!</h2>
+                                <p className="text-gray-500 mb-6">Total Amount: <span className="font-bold text-gray-900">₹{lastBill.totalAmount}</span></p>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowLastBillModal(false)}
+                                        className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200"
+                                    >
+                                        Close (Esc)
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            // Re-trigger WhatsApp
+                                            const customer = customers.find(c => c.id === lastBill.customerId);
+                                            const phone = customer?.phone || '';
+                                            if (phone) {
+                                                const text = `*Kirana King Invoice*\n\nDate: ${new Date().toLocaleDateString()}\nAmount: ₹${lastBill.totalAmount}\n\nItems:\n${lastBill.items.map((i: any) => `${i.name} x${i.quantity} - ₹${i.rate * i.quantity}`).join('\n')}\n\nThank you for shopping with us!`;
+                                                const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+                                                window.open(url, '_blank');
+                                            } else {
+                                                showToast('No phone number available', 'error');
+                                            }
+                                        }}
+                                        className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2"
+                                    >
+                                        <Share2 size={20} /> WhatsApp
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
             {/* Keyboard Shortcuts Help Modal */}
             {
                 showShortcutsHelp && (
@@ -802,49 +828,33 @@ const QuickSale = () => {
                                     <X size={24} />
                                 </button>
                             </div>
-                            <div className="p-4">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between py-2 border-b">
-                                        <span className="text-gray-600">New Bill</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F2</kbd>
-                                    </div>
-                                    <div className="flex justify-between py-2 border-b">
-                                        <span className="text-gray-600">Park Bill</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F3</kbd>
-                                    </div>
-                                    <div className="flex justify-between py-2 border-b">
-                                        <span className="text-gray-600">Show Parked Bills</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F4</kbd>
-                                    </div>
-                                    <div className="flex justify-between py-2 border-b">
-                                        <span className="text-gray-600">Complete Sale</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F12</kbd>
-                                    </div>
-                                    <div className="flex justify-between py-2 border-b">
-                                        <span className="text-gray-600">Focus Search</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Ctrl+F</kbd>
-                                    </div>
-                                    <div className="flex justify-between py-2">
-                                        <span className="text-gray-600">Close Modal</span>
-                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Esc</kbd>
-                                    </div>
+                            <div className="p-4 space-y-2">
+                                <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                    <span className="font-medium">Search Product</span>
+                                    <kbd className="bg-gray-100 px-2 py-1 rounded text-sm font-mono border">F1</kbd>
+                                </div>
+                                <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                    <span className="font-medium">Complete Sale</span>
+                                    <kbd className="bg-gray-100 px-2 py-1 rounded text-sm font-mono border">F2</kbd>
+                                </div>
+                                <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                    <span className="font-medium">Park Bill</span>
+                                    <kbd className="bg-gray-100 px-2 py-1 rounded text-sm font-mono border">F3</kbd>
+                                </div>
+                                <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                    <span className="font-medium">View Parked Bills</span>
+                                    <kbd className="bg-gray-100 px-2 py-1 rounded text-sm font-mono border">F4</kbd>
+                                </div>
+                                <div className="flex justify-between p-2 hover:bg-gray-50 rounded">
+                                    <span className="font-medium">Clear Cart / Close</span>
+                                    <kbd className="bg-gray-100 px-2 py-1 rounded text-sm font-mono border">Esc</kbd>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )
             }
-
-            {/* Camera Scanner Modal */}
-            {
-                showCameraScanner && (
-                    <BarcodeScannerModal
-                        onScan={handleBarcodeScanned}
-                        onClose={() => setShowCameraScanner(false)}
-                    />
-                )
-            }
-        </OwnerLayout >
+        </OwnerLayout>
     );
 };
 

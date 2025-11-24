@@ -71,33 +71,51 @@ export const getPurchaseOrders = async (req: AuthRequest, res: Response) => {
 export const getPurchaseSuggestions = async (req: AuthRequest, res: Response) => {
     try {
         const storeId = req.user!.storeId;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Simple logic: Find products with stock < 10
-        // In a real app, this would use sales velocity
-        const lowStockProducts = await prisma.product.findMany({
-            where: {
-                storeId,
-                batches: {
-                    some: {
-                        quantity: { lt: 10 }
-                    }
-                }
-            },
+        // Fetch products with batches and recent sales for "Smart Suggestions"
+        const products = await prisma.product.findMany({
+            where: { storeId },
             include: {
                 batches: true,
-                supplier: true
+                supplier: true,
+                saleItems: {
+                    where: {
+                        createdAt: { gte: thirtyDaysAgo }
+                    }
+                }
             }
         });
 
-        // Group by supplier for easier PO creation
-        const suggestions = lowStockProducts.map((p: any) => ({
-            productId: p.id,
-            productName: p.name,
-            currentStock: p.batches.reduce((sum: number, b: any) => sum + b.quantity, 0),
-            supplierId: p.supplierId,
-            supplierName: p.supplier?.name,
-            suggestedQuantity: 20 // Default reorder qty
-        }));
+        const suggestions = products
+            .map((p: any) => {
+                const currentStock = p.batches.reduce((sum: number, b: any) => sum + b.quantity, 0);
+
+                // Calculate average daily sales (AI/Smart Logic)
+                const totalSold = p.saleItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+                const avgDailySales = totalSold / 30;
+
+                // Determine reorder point
+                // Logic: If selling, keep 7 days of stock (Lead time cover). 
+                // If not selling, keep a minimum safety stock of 5.
+                let reorderPoint = avgDailySales > 0 ? Math.ceil(avgDailySales * 7) : 5;
+
+                // Suggest reorder if stock is below reorder point
+                if (currentStock < reorderPoint) {
+                    return {
+                        productId: p.id,
+                        productName: p.name,
+                        currentStock,
+                        supplierId: p.supplierId,
+                        supplierName: p.supplier?.name,
+                        // Suggest 21 days of stock (3 weeks) or default 20 units
+                        suggestedQuantity: avgDailySales > 0 ? Math.ceil(avgDailySales * 21) : 20
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean); // Remove nulls
 
         res.json(suggestions);
     } catch (error) {

@@ -6,18 +6,30 @@ import prisma from '../prisma';
 
 // Stub for OCR - In production this would call Google Cloud Vision API or similar
 // We simulate extracting data from an image.
-const performOCR = (imageUrl: string) => {
-    // Mock data extraction based on "dummy" image URLs or random logic for demo
-    // For the MVP, we will return a fixed structure but with some randomization to test alerts
+interface OCRItem {
+    name: string;
+    quantity: number;
+    rate: number;
+    batchNo: string;
+    expiry: string;
+}
+
+interface OCRResult {
+    supplierName: string;
+    invoiceDate: Date;
+    totalAmount: number;
+    items: OCRItem[];
+}
+
+const performOCR = (imageUrl: string): OCRResult => {
+    // In a real app, this would call an OCR API.
+    // For now, we return a structure that indicates scanning was attempted but no data found,
+    // prompting the user to enter it manually.
     return {
-        supplierName: 'Ganesh Traders',
+        supplierName: '', // Empty to force manual entry
         invoiceDate: new Date(),
-        totalAmount: 1200,
-        items: [
-            { name: 'Sugar', quantity: 10, rate: 42, batchNo: 'B123', expiry: '2025-12-01' },
-            { name: 'Tur Dal', quantity: 5, rate: 110, batchNo: 'T99', expiry: '2025-06-01' },
-            { name: 'Lux Soap', quantity: 12, rate: 28, batchNo: 'L55', expiry: '2026-01-01' },
-        ],
+        totalAmount: 0,
+        items: [], // Empty items
     };
 };
 

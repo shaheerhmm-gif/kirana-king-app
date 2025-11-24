@@ -3,6 +3,8 @@ import OwnerLayout from '../components/OwnerLayout';
 import { Plus, Trash2, Save, Calendar, User } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import SupplierForm from '../components/SupplierForm';
+import ProductForm from '../components/ProductForm';
 
 interface PurchaseItem {
     productId: string;
@@ -22,6 +24,10 @@ const PurchaseEntry = () => {
     const [notes, setNotes] = useState('');
     const [items, setItems] = useState<PurchaseItem[]>([]);
     const [submitting, setSubmitting] = useState(false);
+
+    // Modal State
+    const [showSupplierForm, setShowSupplierForm] = useState(false);
+    const [showProductForm, setShowProductForm] = useState(false);
 
     // Item entry state
     const [currentItem, setCurrentItem] = useState<PurchaseItem>({
@@ -127,18 +133,27 @@ const PurchaseEntry = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                                <select
-                                    value={selectedSupplier}
-                                    onChange={(e) => setSelectedSupplier(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                    <select
+                                        value={selectedSupplier}
+                                        onChange={(e) => setSelectedSupplier(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">Select Supplier</option>
+                                        {suppliers.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => setShowSupplierForm(true)}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200"
+                                    title="Add New Supplier"
                                 >
-                                    <option value="">Select Supplier</option>
-                                    {suppliers.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
+                                    <Plus size={20} />
+                                </button>
                             </div>
                         </div>
                         <div>
@@ -180,23 +195,34 @@ const PurchaseEntry = () => {
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4 items-end">
                         <div className="md:col-span-2">
                             <label className="block text-xs font-medium text-gray-500 mb-1">Product</label>
-                            <select
-                                value={currentItem.productId}
-                                onChange={(e) => {
-                                    const product = products.find(p => p.id === e.target.value);
-                                    setCurrentItem({
-                                        ...currentItem,
-                                        productId: e.target.value,
-                                        productName: product?.name || ''
-                                    });
-                                }}
-                                className="w-full p-2 border rounded-lg text-sm"
-                            >
-                                <option value="">Select Product</option>
-                                {products.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <select
+                                        value={currentItem.productId}
+                                        onChange={(e) => {
+                                            const product = products.find(p => p.id === e.target.value);
+                                            setCurrentItem({
+                                                ...currentItem,
+                                                productId: e.target.value,
+                                                productName: product?.name || ''
+                                            });
+                                        }}
+                                        className="w-full p-2 border rounded-lg text-sm"
+                                    >
+                                        <option value="">Select Product</option>
+                                        {products.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => setShowProductForm(true)}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200"
+                                    title="Add New Product"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
@@ -322,6 +348,26 @@ const PurchaseEntry = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Modals */}
+            {showSupplierForm && (
+                <SupplierForm
+                    onClose={() => setShowSupplierForm(false)}
+                    onSuccess={() => {
+                        setShowSupplierForm(false);
+                        fetchSuppliers();
+                    }}
+                />
+            )}
+            {showProductForm && (
+                <ProductForm
+                    onClose={() => setShowProductForm(false)}
+                    onSuccess={() => {
+                        setShowProductForm(false);
+                        fetchProducts();
+                    }}
+                />
+            )}
         </OwnerLayout>
     );
 };

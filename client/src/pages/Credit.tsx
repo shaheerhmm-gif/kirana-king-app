@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
 import api from '../api';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Plus } from 'lucide-react';
 import TrustBadge from '../components/TrustBadge';
+import CustomerForm from '../components/CustomerForm';
 
 interface Customer {
     id: string;
@@ -19,6 +20,7 @@ const Credit = () => {
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [trustData, setTrustData] = useState<any>(null);
+    const [showCustomerForm, setShowCustomerForm] = useState(false);
 
     useEffect(() => {
         fetchCustomers();
@@ -97,17 +99,29 @@ const Credit = () => {
                     <form onSubmit={handleTransaction} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Select Customer</label>
-                            <select
-                                value={selectedCustomer}
-                                onChange={(e) => setSelectedCustomer(e.target.value)}
-                                className="mt-1 block w-full border rounded-md p-2"
-                                required
-                            >
-                                <option value="">-- Select Customer --</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                                ))}
-                            </select>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <select
+                                        value={selectedCustomer}
+                                        onChange={(e) => setSelectedCustomer(e.target.value)}
+                                        className="block w-full border rounded-md p-2"
+                                        required
+                                    >
+                                        <option value="">-- Select Customer --</option>
+                                        {customers.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCustomerForm(true)}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200"
+                                    title="Add New Customer"
+                                >
+                                    <Plus size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {trustData && (
@@ -159,7 +173,7 @@ const Credit = () => {
                             className="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:bg-gray-400"
                         >
                             <DollarSign size={18} />
-                            Record Transaction
+                            Record Transaction (₹)
                         </button>
                     </form>
                 </div>
@@ -170,7 +184,7 @@ const Credit = () => {
                         {customers.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
                                 <p>No customers found.</p>
-                                <p className="text-xs">Add customers from the main menu or during a sale.</p>
+                                <p className="text-xs">Add customers to start tracking credit.</p>
                             </div>
                         ) : (
                             customers.map(c => (
@@ -195,6 +209,17 @@ const Credit = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Customer Form Modal */}
+            {showCustomerForm && (
+                <CustomerForm
+                    onClose={() => setShowCustomerForm(false)}
+                    onSuccess={() => {
+                        setShowCustomerForm(false);
+                        fetchCustomers();
+                    }}
+                />
+            )}
         </OwnerLayout>
     );
 };

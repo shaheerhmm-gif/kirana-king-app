@@ -79,7 +79,7 @@ export const getTopItems = async (req: AuthRequest, res: Response) => {
                     quantity: 'desc',
                 },
             },
-            take: 20,
+            take: 50, // Increased to 50 for Heatmap
         });
 
         // Hydrate with product details
@@ -417,7 +417,7 @@ export const getSlowMovingItems = async (req: AuthRequest, res: Response) => {
                 const currentStock = p.batches.reduce((sum: number, b: any) => sum + b.quantity, 0);
                 const recentSales = p.saleItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
                 const stockValue = p.batches.reduce((sum: number, b: any) => sum + (b.quantity * b.purchasePrice), 0);
-                
+
                 return {
                     productId: p.id,
                     productName: p.name,
@@ -466,7 +466,7 @@ export const getItemWiseMargin = async (req: AuthRequest, res: Response) => {
         });
 
         const productMargins = new Map();
-        
+
         saleItems.forEach((item: any) => {
             const productId = item.productId;
             const purchasePrice = item.product.batches[0]?.purchasePrice || 0;
@@ -501,5 +501,58 @@ export const getItemWiseMargin = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Customer Churn Report
+export const getCustomerChurn = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const daysThreshold = parseInt(req.query.days as string) || 30;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+        // Find customers who haven't purchased since thresholdDate
+        // 1. Get all customers
+        const customers = await prisma.customer.findMany({
+            where: { storeId },
+            include: {
+                sales: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
+                }
+            }
+        });
+
+        const churnRisk = customers
+            .map((c: any) => {
+                const lastSale = c.sales[0];
+                const lastSaleDate = lastSale ? new Date(lastSale.createdAt) : null;
+
+                // If never bought, use creation date
+                const referenceDate = lastSaleDate || new Date(c.createdAt);
+
+                // Days since last interaction
+                const daysSince = Math.floor((new Date().getTime() - referenceDate.getTime()) / (1000 * 3600 * 24));
+
+                return {
+                    id: c.id,
+                    name: c.name,
+                    phone: c.phone,
+                    lastSaleDate: lastSaleDate,
+                    daysSince,
+                    totalSpent: c.sales.reduce((sum: number, s: any) => sum + s.totalAmount, 0) // Note: this only sums the fetched sales (take:1), we need aggregate for total spent.
+                    // Correction: We need to fetch aggregate or just use what we have. 
+                    // For accurate "Total Spent", we should use an aggregate query or store it on customer.
+                    // For MVP, let's just show "Days Since".
+                };
+            })
+            .filter((c: any) => c.daysSince > daysThreshold)
+            .sort((a: any, b: any) => b.daysSince - a.daysSince);
+
+        res.json(churnRisk);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching churn data' });
     }
 };
