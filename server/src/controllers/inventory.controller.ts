@@ -264,3 +264,148 @@ export const getProducts = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const createProduct = async (req: AuthRequest, res: Response) => {
+    try {
+        const { name, barcode, category, supplierName, costPrice, sellingPrice, stock, unit, expiryDate, isSoldByWeight } = req.body;
+        const storeId = req.user!.storeId;
+
+        // 1. Find or Create Supplier if name provided
+        let supplierId = null;
+        if (supplierName) {
+            let supplier = await prisma.supplier.findFirst({
+                where: { storeId, name: supplierName }
+            });
+            if (!supplier) {
+                supplier = await prisma.supplier.create({
+                    data: { storeId, name: supplierName }
+                });
+            }
+            supplierId = supplier.id;
+        }
+
+        // 2. Create Product
+        const product = await prisma.product.create({
+            data: {
+                storeId,
+                name,
+                barcode,
+                category,
+                supplierId,
+                isSoldByWeight: isSoldByWeight || false
+            }
+        });
+
+        // 3. Create Initial Batch if stock provided
+        if (stock > 0) {
+            await prisma.batch.create({
+                data: {
+                    productId: product.id,
+                    quantity: Number(stock),
+                    purchasePrice: Number(costPrice) || 0,
+                    sellingPrice: Number(sellingPrice),
+                    expiryDate: expiryDate ? new Date(expiryDate) : new Date('2099-12-31')
+                }
+            });
+        }
+
+        res.status(201).json(product);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error creating product' });
+    }
+};
+
+export const updateProduct = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, barcode, category, supplierName, costPrice, sellingPrice, stock, unit, expiryDate, isSoldByWeight } = req.body;
+        const storeId = req.user!.storeId;
+
+        // Verify product ownership
+        const existingProduct = await prisma.product.findUnique({
+            where: { id }
+        });
+
+        if (!existingProduct || existingProduct.storeId !== storeId) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // Handle Supplier
+        let supplierId = existingProduct.supplierId;
+        if (supplierName) {
+            let supplier = await prisma.supplier.findFirst({
+                where: { storeId, name: supplierName }
+            });
+            if (!supplier) {
+                supplier = await prisma.supplier.create({
+                    data: { storeId, name: supplierName }
+                });
+            }
+            supplierId = supplier.id;
+        }
+
+        // Update Product
+        const updatedProduct = await prisma.product.update({
+            where: { id },
+            data: {
+                name,
+                barcode,
+                category,
+                supplierId,
+                isSoldByWeight
+            }
+        });
+
+        // Update Batch (Simplified: Update the first batch or create one if none)
+        const firstBatch = await prisma.batch.findFirst({
+            where: { productId: id }
+        });
+
+        if (firstBatch) {
+            await prisma.batch.update({
+                where: { id: firstBatch.id },
+                data: {
+                    sellingPrice: Number(sellingPrice),
+                    purchasePrice: Number(costPrice) || undefined,
+                    expiryDate: expiryDate ? new Date(expiryDate) : undefined
+                }
+            });
+        } else if (stock > 0) {
+            await prisma.batch.create({
+                data: {
+                    productId: id,
+                    quantity: Number(stock),
+                    purchasePrice: Number(costPrice) || 0,
+                    sellingPrice: Number(sellingPrice),
+                    expiryDate: expiryDate ? new Date(expiryDate) : new Date('2099-12-31')
+                }
+            });
+        }
+
+        res.json(updatedProduct);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error updating product' });
+    }
+};
+
+export const deleteProduct = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const storeId = req.user!.storeId;
+
+        const product = await prisma.product.findUnique({ where: { id } });
+        if (!product || product.storeId !== storeId) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        await prisma.batch.deleteMany({ where: { productId: id } });
+        await prisma.product.delete({ where: { id } });
+
+        res.json({ message: 'Product deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error deleting product' });
+    }
+};

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Scan, Plus } from 'lucide-react';
+import { X, Save, Scan } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
@@ -26,7 +26,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
     });
 
     // Categories list (could be fetched from API)
-    const [categories, setCategories] = useState<string[]>(['General', 'Grocery', 'Snacks', 'Beverages', 'Personal Care', 'Household', 'Dairy']);
+    const [categories] = useState<string[]>(['General', 'Grocery', 'Snacks', 'Beverages', 'Personal Care', 'Household', 'Dairy']);
 
     useEffect(() => {
         if (initialData) {
