@@ -79,8 +79,16 @@ export const login = async (req: Request, res: Response) => {
         });
 
         res.status(200).json({ token, user: { id: user.id, name: user.name, role: user.role, storeId: user.storeId } });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+    } catch (error: any) {
+        console.error('Login Error Details:', {
+            message: error.message,
+            code: error.code,
+            meta: error.meta,
+            stack: error.stack
+        });
+        res.status(500).json({
+            message: 'Server error during login',
+            details: error.message
+        });
     }
 };
