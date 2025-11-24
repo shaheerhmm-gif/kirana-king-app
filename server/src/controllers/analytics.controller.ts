@@ -248,3 +248,258 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error fetching P&L' });
     }
 };
+export const getSalesAnalytics = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const { startDate, endDate } = req.query;
+
+        const start = startDate ? new Date(startDate as string) : new Date();
+        start.setHours(0, 0, 0, 0);
+
+        const end = endDate ? new Date(endDate as string) : new Date();
+        end.setHours(23, 59, 59, 999);
+
+        // Category-wise Sales
+        const categorySales = await prisma.saleItem.groupBy({
+            by: ['productId'],
+            where: {
+                sale: {
+                    storeId,
+                    createdAt: { gte: start, lte: end }
+                }
+            },
+            _sum: {
+                totalAmount: true
+            }
+        });
+
+        // Hydrate with category names (assuming Product has category field, or we join)
+        // Since we don't have direct category group, we'll fetch products and aggregate manually
+        // Optimization: Fetch all products once
+        const products = await prisma.product.findMany({
+            where: { storeId },
+            select: { id: true, category: true }
+        });
+
+        const categoryMap: Record<string, number> = {};
+        categorySales.forEach(item => {
+            const product = products.find(p => p.id === item.productId);
+            const category = product?.category || 'Uncategorized';
+            categoryMap[category] = (categoryMap[category] || 0) + (item._sum.totalAmount || 0);
+        });
+
+        const categoryData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
+
+        // Branch-wise Sales (if multi-branch)
+        // This requires Sale to have branchId. Let's check schema.
+        // Schema update: Sale model needs branchId. If not present, we skip or use storeId.
+        // Assuming single branch for now or aggregated.
+
+        res.json({
+            categoryData,
+            // branchData: ... 
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching sales analytics' });
+    }
+};
+
+export const getStockValuation = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+
+        const products = await prisma.product.findMany({
+            where: { storeId },
+            include: { batches: true }
+        });
+
+        let totalValue = 0;
+        let totalItems = 0;
+
+        products.forEach(p => {
+            p.batches.forEach(b => {
+                totalValue += (b.quantity * b.purchasePrice);
+                totalItems += b.quantity;
+            });
+        });
+
+        res.json({
+            totalValue,
+            totalItems,
+            productCount: products.length
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching stock valuation' });
+    }
+};
+
+// GST Register Report
+export const getGSTRegister = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const { startDate, endDate } = req.query;
+
+        const start = startDate ? new Date(startDate as string) : new Date(new Date().setDate(1));
+        const end = endDate ? new Date(endDate as string) : new Date();
+
+        const sales = await prisma.sale.findMany({
+            where: {
+                storeId,
+                createdAt: { gte: start, lte: end }
+            },
+            include: {
+                items: true,
+                customer: true
+            }
+        });
+
+        const gstData = sales.map((sale: any) => {
+            const totalCGST = sale.items.reduce((sum: number, item: any) => sum + (item.cgst || 0), 0);
+            const totalSGST = sale.items.reduce((sum: number, item: any) => sum + (item.sgst || 0), 0);
+            const totalIGST = sale.items.reduce((sum: number, item: any) => sum + (item.igst || 0), 0);
+            const totalTaxable = sale.items.reduce((sum: number, item: any) => sum + (item.taxableAmount || 0), 0);
+
+            return {
+                invoiceNumber: sale.invoiceNumber,
+                date: sale.createdAt,
+                customerName: sale.customer?.name || 'Walk-in',
+                gstin: sale.customer?.gstin || 'N/A',
+                taxableAmount: totalTaxable,
+                cgst: totalCGST,
+                sgst: totalSGST,
+                igst: totalIGST,
+                totalTax: totalCGST + totalSGST + totalIGST,
+                grandTotal: sale.totalAmount
+            };
+        });
+
+        const summary = {
+            totalTaxable: gstData.reduce((sum: number, s: any) => sum + s.taxableAmount, 0),
+            totalCGST: gstData.reduce((sum: number, s: any) => sum + s.cgst, 0),
+            totalSGST: gstData.reduce((sum: number, s: any) => sum + s.sgst, 0),
+            totalIGST: gstData.reduce((sum: number, s: any) => sum + s.igst, 0),
+            totalTax: gstData.reduce((sum: number, s: any) => sum + s.totalTax, 0),
+            grandTotal: gstData.reduce((sum: number, s: any) => sum + s.grandTotal, 0)
+        };
+
+        res.json({ transactions: gstData, summary });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Slow-moving items report
+export const getSlowMovingItems = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const daysThreshold = parseInt(req.query.days as string) || 30;
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - daysThreshold);
+
+        const products = await prisma.product.findMany({
+            where: { storeId },
+            include: {
+                batches: true,
+                saleItems: {
+                    where: { createdAt: { gte: thresholdDate } },
+                    select: { quantity: true }
+                }
+            }
+        });
+
+        const slowMoving = products
+            .map((p: any) => {
+                const currentStock = p.batches.reduce((sum: number, b: any) => sum + b.quantity, 0);
+                const recentSales = p.saleItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+                const stockValue = p.batches.reduce((sum: number, b: any) => sum + (b.quantity * b.purchasePrice), 0);
+                
+                return {
+                    productId: p.id,
+                    productName: p.name,
+                    currentStock,
+                    salesInPeriod: recentSales,
+                    stockValue,
+                    turnoverRate: currentStock > 0 ? (recentSales / daysThreshold) : 0
+                };
+            })
+            .filter((item: any) => item.currentStock > 0 && item.turnoverRate < 0.5)
+            .sort((a: any, b: any) => a.turnoverRate - b.turnoverRate);
+
+        res.json(slowMoving);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Item-wise margin report
+export const getItemWiseMargin = async (req: AuthRequest, res: Response) => {
+    try {
+        const storeId = req.user!.storeId;
+        const { startDate, endDate } = req.query;
+
+        const start = startDate ? new Date(startDate as string) : new Date(new Date().setDate(1));
+        const end = endDate ? new Date(endDate as string) : new Date();
+
+        const saleItems = await prisma.saleItem.findMany({
+            where: {
+                sale: {
+                    storeId,
+                    createdAt: { gte: start, lte: end }
+                }
+            },
+            include: {
+                product: {
+                    include: {
+                        batches: {
+                            orderBy: { createdAt: 'asc' },
+                            take: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        const productMargins = new Map();
+        
+        saleItems.forEach((item: any) => {
+            const productId = item.productId;
+            const purchasePrice = item.product.batches[0]?.purchasePrice || 0;
+            const revenue = item.totalAmount || (item.rate * item.quantity);
+            const cost = purchasePrice * item.quantity;
+            const profit = revenue - cost;
+
+            if (productMargins.has(productId)) {
+                const existing = productMargins.get(productId);
+                existing.revenue += revenue;
+                existing.cost += cost;
+                existing.profit += profit;
+                existing.quantitySold += item.quantity;
+            } else {
+                productMargins.set(productId, {
+                    productId,
+                    productName: item.product.name,
+                    revenue,
+                    cost,
+                    profit,
+                    quantitySold: item.quantity
+                });
+            }
+        });
+
+        const margins = Array.from(productMargins.values()).map((item: any) => ({
+            ...item,
+            margin: item.revenue > 0 ? (item.profit / item.revenue) * 100 : 0
+        }));
+
+        res.json(margins.sort((a: any, b: any) => b.profit - a.profit));
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};

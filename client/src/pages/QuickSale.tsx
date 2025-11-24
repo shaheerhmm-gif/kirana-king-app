@@ -66,6 +66,24 @@ const QuickSale = () => {
     // Camera Scanner State
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const location = useLocation();
+    const [customerDetails, setCustomerDetails] = useState<any>(null);
+
+    useEffect(() => {
+        if (selectedCustomer) {
+            fetchCustomerDetails(selectedCustomer);
+        } else {
+            setCustomerDetails(null);
+        }
+    }, [selectedCustomer]);
+
+    const fetchCustomerDetails = async (customerId: string) => {
+        try {
+            const res = await api.get(`/credit/${customerId}/details`);
+            setCustomerDetails(res.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -430,7 +448,6 @@ const QuickSale = () => {
                             className={`p-3 rounded-lg transition-all ${isListening
                                 ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
                                 : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
-                            title="Voice Command (e.g. 'Ek Maggie')"
                         >
                             {isListening ? <MicOff size={24} /> : <Mic size={24} />}
                         </button>
@@ -450,6 +467,28 @@ const QuickSale = () => {
                                 </option>
                             ))}
                         </select>
+
+                        {/* Customer Intelligence Panel */}
+                        {customerDetails && (
+                            <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="font-semibold text-blue-800">Balance: ₹{customerDetails.balance}</span>
+                                    <span className="text-gray-600">Limit: ₹{customerDetails.creditLimit}</span>
+                                </div>
+                                {customerDetails.lastSales && customerDetails.lastSales.length > 0 && (
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 mb-1">Last 3 Visits:</p>
+                                        <div className="flex gap-2 overflow-x-auto">
+                                            {customerDetails.lastSales.map((sale: any) => (
+                                                <div key={sale.id} className="bg-white p-1.5 rounded border text-xs whitespace-nowrap">
+                                                    ₹{sale.totalAmount} ({new Date(sale.createdAt).toLocaleDateString()})
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Product Grid */}
@@ -670,134 +709,142 @@ const QuickSale = () => {
             </div>
 
             {/* Parked Bills Modal */}
-            {showParkedBills && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]" onClick={() => setShowParkedBills(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                            <h2 className="text-lg font-bold flex items-center gap-2">
-                                <Pause /> Parked Bills ({parkedBills.length})
-                            </h2>
-                            <button onClick={() => setShowParkedBills(false)} className="text-gray-500 hover:text-gray-700">
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <div className="p-4 overflow-y-auto flex-1">
-                            {parkedBills.length === 0 ? (
-                                <div className="text-center py-8 text-gray-400">
-                                    <AlertCircle size={48} className="mx-auto mb-2 opacity-50" />
-                                    <p>No parked bills</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {parkedBills.map((bill) => (
-                                        <div key={bill.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <p className="font-semibold">
-                                                        {bill.customer?.name || 'Walk-in Customer'}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {new Date(bill.parkedAt).toLocaleString()}
+            {
+                showParkedBills && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]" onClick={() => setShowParkedBills(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    <Pause /> Parked Bills ({parkedBills.length})
+                                </h2>
+                                <button onClick={() => setShowParkedBills(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <div className="p-4 overflow-y-auto flex-1">
+                                {parkedBills.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <AlertCircle size={48} className="mx-auto mb-2 opacity-50" />
+                                        <p>No parked bills</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {parkedBills.map((bill) => (
+                                            <div key={bill.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="font-semibold">
+                                                            {bill.customer?.name || 'Walk-in Customer'}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {new Date(bill.parkedAt).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                    <p className="text-lg font-bold text-indigo-600">
+                                                        ₹{bill.subtotal}
                                                     </p>
                                                 </div>
-                                                <p className="text-lg font-bold text-indigo-600">
-                                                    ₹{bill.subtotal}
-                                                </p>
+                                                <div className="mb-3">
+                                                    <p className="text-sm text-gray-600">
+                                                        {bill.items.length} items: {bill.items.map(i => i.name).join(', ')}
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => resumeParkedBill(bill)}
+                                                        className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
+                                                    >
+                                                        <Play size={16} /> Resume
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteParkedBill(bill.id)}
+                                                        className="px-4 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="mb-3">
-                                                <p className="text-sm text-gray-600">
-                                                    {bill.items.length} items: {bill.items.map(i => i.name).join(', ')}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => resumeParkedBill(bill)}
-                                                    className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
-                                                >
-                                                    <Play size={16} /> Resume
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteParkedBill(bill.id)}
-                                                    className="px-4 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Split Payment Modal */}
-            {showSplitPaymentModal && (
-                <SplitPaymentModal
-                    totalAmount={totalAmount}
-                    onConfirm={(payments) => {
-                        setSplitPayments(payments);
-                        setPaymentMode('SPLIT');
-                        // Optional: auto-complete sale here or let user click complete
-                    }}
-                    onClose={() => {
-                        setShowSplitPaymentModal(false);
-                        if (splitPayments.length === 0) setPaymentMode('CASH');
-                    }}
-                />
-            )}
+            {
+                showSplitPaymentModal && (
+                    <SplitPaymentModal
+                        totalAmount={totalAmount}
+                        onConfirm={(payments) => {
+                            setSplitPayments(payments);
+                            setPaymentMode('SPLIT');
+                            // Optional: auto-complete sale here or let user click complete
+                        }}
+                        onClose={() => {
+                            setShowSplitPaymentModal(false);
+                            if (splitPayments.length === 0) setPaymentMode('CASH');
+                        }}
+                    />
+                )
+            }
 
             {/* Keyboard Shortcuts Help Modal */}
-            {showShortcutsHelp && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]" onClick={() => setShowShortcutsHelp(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                            <h2 className="text-lg font-bold">⌨️ Keyboard Shortcuts</h2>
-                            <button onClick={() => setShowShortcutsHelp(false)} className="text-gray-500 hover:text-gray-700">
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <div className="space-y-2">
-                                <div className="flex justify-between py-2 border-b">
-                                    <span className="text-gray-600">New Bill</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F2</kbd>
-                                </div>
-                                <div className="flex justify-between py-2 border-b">
-                                    <span className="text-gray-600">Park Bill</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F3</kbd>
-                                </div>
-                                <div className="flex justify-between py-2 border-b">
-                                    <span className="text-gray-600">Show Parked Bills</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F4</kbd>
-                                </div>
-                                <div className="flex justify-between py-2 border-b">
-                                    <span className="text-gray-600">Complete Sale</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F12</kbd>
-                                </div>
-                                <div className="flex justify-between py-2 border-b">
-                                    <span className="text-gray-600">Focus Search</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Ctrl+F</kbd>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-gray-600">Close Modal</span>
-                                    <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Esc</kbd>
+            {
+                showShortcutsHelp && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]" onClick={() => setShowShortcutsHelp(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                                <h2 className="text-lg font-bold">⌨️ Keyboard Shortcuts</h2>
+                                <button onClick={() => setShowShortcutsHelp(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600">New Bill</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F2</kbd>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600">Park Bill</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F3</kbd>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600">Show Parked Bills</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F4</kbd>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600">Complete Sale</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">F12</kbd>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b">
+                                        <span className="text-gray-600">Focus Search</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Ctrl+F</kbd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <span className="text-gray-600">Close Modal</span>
+                                        <kbd className="px-2 py-1 bg-gray-100 rounded font-mono text-sm">Esc</kbd>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Camera Scanner Modal */}
-            {showCameraScanner && (
-                <BarcodeScannerModal
-                    onScan={handleBarcodeScanned}
-                    onClose={() => setShowCameraScanner(false)}
-                />
-            )}
-        </OwnerLayout>
+            {
+                showCameraScanner && (
+                    <BarcodeScannerModal
+                        onScan={handleBarcodeScanned}
+                        onClose={() => setShowCameraScanner(false)}
+                    />
+                )
+            }
+        </OwnerLayout >
     );
 };
 

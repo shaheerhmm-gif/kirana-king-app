@@ -39,11 +39,33 @@ export const createSale = async (req: AuthRequest, res: Response) => {
                 totalAmount,
                 paymentMode,
                 items: {
-                    create: items.map((item: any) => ({
-                        productId: item.productId,
-                        quantity: item.quantity,
-                        rate: item.rate
-                    }))
+                    create: items.map((item: any) => {
+                        // Calculate GST if applicable
+                        // Assuming item.gstRate is provided or fetched. 
+                        // For MVP, we trust the frontend or fetch product details here.
+                        // Let's rely on frontend passing gstRate for speed, but ideally fetch.
+                        const gstRate = item.gstRate || 0;
+                        const rate = item.rate;
+                        const quantity = item.quantity;
+                        const taxableAmount = (rate * quantity) / (1 + gstRate / 100);
+                        const taxAmount = (rate * quantity) - taxableAmount;
+
+                        // Simple logic: Split 50-50 for CGST/SGST if local, else IGST
+                        // For now, assume local (CGST+SGST)
+                        const cgst = taxAmount / 2;
+                        const sgst = taxAmount / 2;
+                        const igst = 0;
+
+                        return {
+                            productId: item.productId,
+                            quantity: item.quantity,
+                            rate: item.rate,
+                            cgst,
+                            sgst,
+                            igst,
+                            taxableAmount
+                        };
+                    })
                 },
                 // Create split payment records if applicable
                 ...(paymentMode === 'SPLIT' && payments && {

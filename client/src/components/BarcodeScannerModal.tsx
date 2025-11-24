@@ -79,8 +79,9 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ onScan, onClo
                 const capabilities = await scannerRef.current.getRunningTrackCapabilities();
                 // @ts-ignore
                 if (capabilities.torch) {
-                    // @ts-ignore - torch is not in standard MediaTrackConstraints
+                    // @ts-ignore - torch is not in standard MediaTrackConstraints but supported by many browsers
                     await scannerRef.current.applyVideoConstraints({
+                        // @ts-ignore - torch property not in TypeScript types
                         advanced: [{ torch: !torchEnabled }]
                     });
                     setTorchEnabled(!torchEnabled);

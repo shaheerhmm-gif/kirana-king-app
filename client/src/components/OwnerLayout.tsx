@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, ShoppingCart, FileText, Users, BarChart2, LogOut, HelpCircle, Package, Wheat, Calendar } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, FileText, Users, BarChart2, LogOut, HelpCircle, Package, Wheat, Calendar, Book } from 'lucide-react';
 
 const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { logout, user } = useAuth();
@@ -18,7 +18,10 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { path: '/owner/inventory', icon: <ShoppingCart size={20} />, label: 'Inventory' },
         { path: '/owner/invoices', icon: <FileText size={20} />, label: 'Invoices' },
         { path: '/owner/suppliers', icon: <Package size={20} />, label: 'Suppliers' },
-        { path: '/owner/purchase', icon: <ShoppingCart size={20} />, label: 'Purchase Entry' },
+        { path: '/purchase/orders', icon: <ShoppingCart size={20} />, label: 'Purchases' },
+        { path: '/purchase/returns', icon: <LogOut size={20} />, label: 'Returns' },
+        { path: '/owner/accounting', icon: <Book size={20} />, label: 'Accounting' },
+        { path: '/owner/reports', icon: <BarChart2 size={20} />, label: 'Reports' },
         { path: '/owner/loose-inventory', icon: <Wheat size={20} />, label: 'Loose Items' },
         { path: '/owner/expiry', icon: <Calendar size={20} />, label: 'Expiry' },
         { path: '/owner/credit', icon: <Users size={20} />, label: 'Credit' },

@@ -252,8 +252,12 @@ export const getProducts = async (req: AuthRequest, res: Response) => {
                 batches: {
                     where: { quantity: { gt: 0 } }
                 }
-            }
+            },
+            // Select specific fields if needed, but default includes hsn/gstRate
+            // Just ensuring we return them.
         });
+
+        // Map to include flattened GST info if needed, but frontend can read from product object directly.
         res.json(products);
     } catch (error) {
         console.error(error);

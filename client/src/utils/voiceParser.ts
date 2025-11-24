@@ -67,7 +67,7 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
     let bestMatch: Product | null = null;
     let bestScore = 0;
 
-    products.forEach(p => {
+    products.forEach((p: Product) => {
         const pName = p.name.toLowerCase();
         // Exact match
         if (pName === cleanProductSearch) {
@@ -95,12 +95,12 @@ export const parseVoiceCommand = (transcript: string, products: Product[]): Pars
     console.log('[Voice Parser] Input:', transcript);
     console.log('[Voice Parser] Quantity:', quantity);
     console.log('[Voice Parser] Product Search:', cleanProductSearch);
-    console.log('[Voice Parser] Best Match:', bestMatch?.name, 'Score:', bestScore);
+    console.log('[Voice Parser] Best Match:', (bestMatch as Product | null)?.name, 'Score:', bestScore);
 
     return {
-        productId: bestMatch?.id || null,
+        productId: (bestMatch as Product | null)?.id || null,
         quantity,
         originalTranscript: transcript,
-        matchedName: bestMatch?.name
+        matchedName: (bestMatch as Product | null)?.name
     };
 };

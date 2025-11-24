@@ -1,5 +1,4 @@
 import { Router } from 'express';
-// Import other routes here
 import authRoutes from './auth.routes';
 import inventoryRoutes from './inventory.routes';
 import invoiceRoutes from './invoice.routes';
@@ -14,6 +13,10 @@ import expiryRoutes from './expiry.routes';
 import walletRoutes from './wallet.routes';
 import assetRoutes from './asset.routes';
 import parkedRoutes from './parked.routes';
+import branchRoutes from './branch.routes';
+import purchaseRoutes from './purchase.routes';
+import supplierReturnRoutes from './supplierReturn.routes';
+import accountingRoutes from './accounting.routes';
 
 const router = Router();
 
@@ -35,5 +38,9 @@ router.use('/expiry', expiryRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/assets', assetRoutes);
 router.use('/parked', parkedRoutes);
+router.use('/branch', branchRoutes);
+router.use('/purchase', purchaseRoutes);
+router.use('/returns', supplierReturnRoutes);
+router.use('/accounting', accountingRoutes);
 
 export default router;

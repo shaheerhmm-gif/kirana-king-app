@@ -16,6 +16,13 @@ import PurchaseEntry from './pages/PurchaseEntry';
 import { LooseInventory } from './pages/LooseInventory';
 import { ExpiryManagement } from './pages/ExpiryManagement';
 import Menu from './pages/Menu';
+import PurchaseSuggestions from './pages/PurchaseSuggestions';
+import PurchaseOrderList from './pages/PurchaseOrderList';
+import PurchaseOrderCreate from './pages/PurchaseOrderCreate';
+import SupplierReturn from './pages/SupplierReturn';
+import Accounting from './pages/Accounting';
+import Reports from './pages/Reports';
+import InstallPWA from './components/InstallPWA';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; role?: string }> = ({ children, role }) => {
   const { user, isAuthenticated } = useAuth();
@@ -107,6 +114,62 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/purchase/suggestions"
+        element={
+          <PrivateRoute role="OWNER">
+            <PurchaseSuggestions />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/purchase/orders"
+        element={
+          <PrivateRoute role="OWNER">
+            <PurchaseOrderList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/purchase/create"
+        element={
+          <PrivateRoute role="OWNER">
+            <PurchaseOrderCreate />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/purchase/returns"
+        element={
+          <PrivateRoute role="OWNER">
+            <SupplierReturn />
+          </PrivateRoute>
+        }
+      />
+      import Accounting from './pages/Accounting';
+
+      // ... existing imports ...
+
+      <Route
+        path="/owner/accounting"
+        element={
+          <PrivateRoute role="OWNER">
+            <Accounting />
+          </PrivateRoute>
+        }
+      />
+      import Reports from './pages/Reports';
+
+      // ... existing imports ...
+
+      <Route
+        path="/owner/reports"
+        element={
+          <PrivateRoute role="OWNER">
+            <Reports />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/owner/expiry"
         element={
           <PrivateRoute role="OWNER">
@@ -159,6 +222,7 @@ const App = () => {
       <ToastProvider>
         <Router>
           <AppRoutes />
+          <InstallPWA />
         </Router>
       </ToastProvider>
     </AuthProvider>

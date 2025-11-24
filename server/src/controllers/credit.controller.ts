@@ -180,3 +180,44 @@ export const getTrustScore = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const getCustomerDetails = async (req: AuthRequest, res: Response) => {
+    try {
+        const { customerId } = req.params;
+        const storeId = req.user!.storeId;
+
+        const customer = await prisma.customer.findUnique({
+            where: { id: customerId },
+            include: {
+                sales: {
+                    take: 3,
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        totalAmount: true,
+                        createdAt: true,
+                        paymentMode: true
+                    }
+                }
+            }
+        });
+
+        if (!customer || customer.storeId !== storeId) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+
+        const balance = await calculateBalance(customerId);
+
+        res.json({
+            id: customer.id,
+            name: customer.name,
+            phone: customer.phone,
+            creditLimit: customer.creditLimit,
+            balance,
+            lastSales: customer.sales
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
