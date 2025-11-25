@@ -133,6 +133,61 @@ const ProductForm: React.FC<ProductFormProps> = ({ onClose, onSuccess, initialDa
                     </button>
                 </div>
 
+                {/* Smart Search Section */}
+                {!initialData && (
+                    <div className="px-6 pt-6 pb-2">
+                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <label className="block text-sm font-bold text-indigo-800 mb-2 flex items-center gap-2">
+                                <Globe size={16} /> Smart Add (Search Global Database)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Search by name (e.g. Maggi, Lux, Coke)..."
+                                    className="flex-1 px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const query = (e.target as HTMLInputElement).value;
+                                            if (!query) return;
+
+                                            setIsLookingUp(true);
+                                            try {
+                                                // Dynamic import to avoid circular dependency issues if any
+                                                const { searchProductsByName } = await import('../services/openFoodFacts');
+                                                const results = await searchProductsByName(query);
+                                                if (results.length > 0) {
+                                                    // Auto-fill with first result for now, or show list
+                                                    // For MVP, let's just take the first one and notify
+                                                    const p = results[0];
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        name: p.name,
+                                                        category: p.category,
+                                                        supplierName: p.brand || prev.supplierName,
+                                                        barcode: p.barcode || prev.barcode
+                                                    }));
+                                                    showToast(`Found: ${p.name}`, 'success');
+                                                } else {
+                                                    showToast('No products found', 'info');
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                            } finally {
+                                                setIsLookingUp(false);
+                                            }
+                                        }
+                                    }}
+                                />
+                                <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700">
+                                    {isLookingUp ? <Loader size={20} className="animate-spin" /> : 'Search'}
+                                </button>
+                            </div>
+                            <p className="text-xs text-indigo-600 mt-2">Type product name and press Enter to auto-fill details.</p>
+                        </div>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

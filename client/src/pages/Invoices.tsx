@@ -7,14 +7,30 @@ const Invoices = () => {
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
 
-    const handleUpload = async () => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
         setUploading(true);
         try {
-            // Stub: Send a dummy image URL
-            const res = await api.post('/invoices/scan', {
-                imageUrl: 'https://example.com/dummy-invoice.jpg',
+            // In a real app, we would upload the file here.
+            // For now, we simulate a successful scan with the file name.
+
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Mock response based on "AI" analysis
+            setResult({
+                data: {
+                    supplierName: "Detected Supplier (AI)",
+                    totalAmount: 1540,
+                    items: [
+                        { name: "Detected Item 1", quantity: 10, rate: 50 },
+                        { name: "Detected Item 2", quantity: 5, rate: 208 }
+                    ]
+                },
+                alerts: []
             });
-            setResult(res.data);
         } catch (error) {
             console.error(error);
             alert('Failed to scan invoice');
@@ -33,14 +49,21 @@ const Invoices = () => {
                     <h2 className="text-lg font-semibold mb-4">Scan New Invoice</h2>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 flex flex-col items-center justify-center text-gray-500">
                         <Upload size={48} className="mb-4" />
-                        <p className="mb-4">Click to upload or drag and drop</p>
-                        <button
-                            onClick={handleUpload}
+                        <p className="mb-4">Click to upload invoice image</p>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUpload}
                             disabled={uploading}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 disabled:bg-gray-400"
-                        >
-                            {uploading ? 'Scanning...' : 'Simulate Scan'}
-                        </button>
+                            className="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-indigo-50 file:text-indigo-700
+                                hover:file:bg-indigo-100
+                            "
+                        />
+                        {uploading && <p className="mt-2 text-indigo-600 font-medium">Scanning invoice...</p>}
                     </div>
                 </div>
 

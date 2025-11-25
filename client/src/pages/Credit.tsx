@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
 import api from '../api';
-import { DollarSign, Plus, MessageCircle } from 'lucide-react';
+import { IndianRupee, Plus, MessageCircle } from 'lucide-react';
 import TrustBadge from '../components/TrustBadge';
 import CustomerForm from '../components/CustomerForm';
 
@@ -218,7 +218,7 @@ const Credit = () => {
                             disabled={loading || !selectedCustomer}
                             className="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:bg-gray-400"
                         >
-                            <DollarSign size={18} />
+                            <IndianRupee size={18} />
                             Record Transaction (₹)
                         </button>
                     </form>

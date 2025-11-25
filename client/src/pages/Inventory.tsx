@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import OwnerLayout from '../components/OwnerLayout';
-import { Package, AlertTriangle, Clock, Search, Edit2, Plus } from 'lucide-react';
+import { Package, AlertTriangle, Clock, Search, Edit2, Plus, Trash2, Globe } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import StockAdjustmentModal from '../components/StockAdjustmentModal';
@@ -100,7 +100,13 @@ const Inventory = () => {
                             onClick={() => setIsCreatingProduct(true)}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
                         >
-                            <Plus size={18} /> {t('inventory.add_product')}
+                            <Globe size={18} /> Smart Add
+                        </button>
+                        <button
+                            onClick={() => setIsCreatingProduct(true)}
+                            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            <Plus size={18} /> Manual Add
                         </button>
                     </div>
                 </div>
@@ -168,6 +174,24 @@ const Inventory = () => {
                                                             className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
                                                         >
                                                             {t('inventory.adjust')}
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Are you sure you want to delete this product?')) {
+                                                                    try {
+                                                                        await api.delete(`/inventory/products/${product.id}`);
+                                                                        showToast('Product deleted', 'success');
+                                                                        fetchData();
+                                                                    } catch (error) {
+                                                                        console.error(error);
+                                                                        showToast('Failed to delete product', 'error');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Product"
+                                                        >
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
                                                 </div>

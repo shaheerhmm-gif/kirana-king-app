@@ -19,7 +19,7 @@ const OwnerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     const navItems = [
         { path: '/owner', icon: <LayoutDashboard size={20} />, label: t('nav.dashboard') },
-        { path: '/owner/quick-sale', icon: <Package size={20} />, label: 'Quick Sale (POS)' },
+        { path: '/owner/quick-sale', icon: <Package size={20} />, label: 'POS Terminal' },
         { path: '/owner/inventory', icon: <ShoppingCart size={20} />, label: t('nav.inventory') },
         { path: '/owner/invoices', icon: <FileText size={20} />, label: t('nav.invoices') },
         { path: '/owner/suppliers', icon: <Package size={20} />, label: t('nav.suppliers') },

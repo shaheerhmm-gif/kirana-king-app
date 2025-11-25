@@ -4,11 +4,12 @@ import api from '../api';
 import { TrendingUp, DollarSign, Calendar, BarChart2, Trash2, Users, AlertTriangle } from 'lucide-react';
 
 const Analytics = () => {
-    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SALES' | 'PROFIT' | 'INSIGHTS'>('OVERVIEW');
+    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SALES' | 'PROFIT' | 'GST' | 'INSIGHTS'>('OVERVIEW');
     const [deadStock, setDeadStock] = useState<any[]>([]);
     const [topItems, setTopItems] = useState<any[]>([]);
     const [salesData, setSalesData] = useState<any>(null);
     const [profitData, setProfitData] = useState<any>(null);
+    const [gstData, setGstData] = useState<any>(null);
     const [itemMargins, setItemMargins] = useState<any[]>([]);
     const [churnData, setChurnData] = useState<any[]>([]);
     const [dateRange, setDateRange] = useState({
@@ -23,6 +24,7 @@ const Analytics = () => {
     useEffect(() => {
         if (activeTab === 'SALES') fetchSalesData();
         if (activeTab === 'PROFIT') fetchProfitData();
+        if (activeTab === 'GST') fetchGSTData();
         if (activeTab === 'INSIGHTS') fetchInsightsData();
     }, [activeTab, dateRange]);
 
@@ -56,6 +58,15 @@ const Analytics = () => {
             ]);
             setProfitData(profitRes.data);
             setItemMargins(marginRes.data.slice(0, 10)); // Top 10
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const fetchGSTData = async () => {
+        try {
+            const res = await api.get(`/analytics/gst-register?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`);
+            setGstData(res.data);
         } catch (error) {
             console.error(error);
         }
@@ -98,6 +109,13 @@ const Analytics = () => {
                             <DollarSign size={18} /> Profit
                         </button>
                         <button
+                            onClick={() => setActiveTab('GST')}
+                            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'GST' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            <Calendar size={18} /> GST
+                        </button>
+                        <button
                             onClick={() => setActiveTab('INSIGHTS')}
                             className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'INSIGHTS' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                                 }`}
@@ -109,7 +127,7 @@ const Analytics = () => {
 
                 <div className="bg-white rounded-xl shadow-sm border flex-1 overflow-hidden flex flex-col">
                     {/* Date Filter for Reports */}
-                    {(activeTab === 'SALES' || activeTab === 'PROFIT') && (
+                    {(activeTab === 'SALES' || activeTab === 'PROFIT' || activeTab === 'GST') && (
                         <div className="p-4 border-b bg-gray-50 flex gap-4 items-center">
                             <Calendar size={20} className="text-gray-500" />
                             <input
@@ -326,6 +344,103 @@ const Analytics = () => {
                                                                 {item.margin.toFixed(1)}%
                                                             </span>
                                                         </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'GST' && gstData && (
+                            <div className="space-y-6">
+                                {/* GST Summary */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                        <div className="text-indigo-600 text-sm font-medium">Total Taxable Value</div>
+                                        <div className="text-2xl font-bold text-indigo-900">₹{gstData.summary.totalTaxable.toLocaleString()}</div>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <div className="text-green-600 text-sm font-medium">Total Tax Liability</div>
+                                        <div className="text-2xl font-bold text-green-900">₹{gstData.summary.totalTax.toLocaleString()}</div>
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <div className="text-blue-600 text-sm font-medium">CGST + SGST</div>
+                                        <div className="text-2xl font-bold text-blue-900">₹{(gstData.summary.totalCGST + gstData.summary.totalSGST).toLocaleString()}</div>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                        <div className="text-purple-600 text-sm font-medium">IGST</div>
+                                        <div className="text-2xl font-bold text-purple-900">₹{gstData.summary.totalIGST.toLocaleString()}</div>
+                                    </div>
+                                </div>
+
+                                {/* Export Button */}
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => {
+                                            // Simple CSV Export
+                                            const headers = ['Invoice No', 'Date', 'Customer', 'GSTIN', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total Tax', 'Grand Total'];
+                                            const rows = gstData.transactions.map((t: any) => [
+                                                t.invoiceNumber,
+                                                new Date(t.date).toLocaleDateString(),
+                                                t.customerName,
+                                                t.gstin,
+                                                t.taxableAmount,
+                                                t.cgst,
+                                                t.sgst,
+                                                t.igst,
+                                                t.totalTax,
+                                                t.grandTotal
+                                            ]);
+
+                                            const csvContent = "data:text/csv;charset=utf-8,"
+                                                + headers.join(",") + "\n"
+                                                + rows.map((e: any[]) => e.join(",")).join("\n");
+
+                                            const encodedUri = encodeURI(csvContent);
+                                            const link = document.createElement("a");
+                                            link.setAttribute("href", encodedUri);
+                                            link.setAttribute("download", `gst_report_${dateRange.startDate}_${dateRange.endDate}.csv`);
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                        }}
+                                        className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2"
+                                    >
+                                        <Calendar size={18} /> Download GSTR-1 (CSV)
+                                    </button>
+                                </div>
+
+                                {/* GST Register Table */}
+                                <div>
+                                    <h3 className="font-bold text-gray-800 mb-3">Sales Register (GSTR-1)</h3>
+                                    <div className="overflow-x-auto border rounded-lg bg-white">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Taxable</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">CGST</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">SGST</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {gstData.transactions.map((t: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 text-sm text-gray-500">{new Date(t.date).toLocaleDateString()}</td>
+                                                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{t.invoiceNumber}</td>
+                                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                                            {t.customerName}
+                                                            {t.gstin !== 'N/A' && <span className="block text-xs text-indigo-600">{t.gstin}</span>}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-right text-gray-900">₹{t.taxableAmount.toFixed(2)}</td>
+                                                        <td className="px-6 py-4 text-sm text-right text-gray-500">₹{t.cgst.toFixed(2)}</td>
+                                                        <td className="px-6 py-4 text-sm text-right text-gray-500">₹{t.sgst.toFixed(2)}</td>
+                                                        <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">₹{t.grandTotal.toFixed(2)}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
